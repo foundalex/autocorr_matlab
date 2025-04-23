@@ -1,0 +1,13 @@
+# gitignore
+
+# кроме
+#/.gitignore
+#/.gitmodules
+#/*.prj
+#/*.md
+#/*.correlator
+#/.gitattributes
+#/*.golden_link
+/*resources
+/test_signals/*.csv
+/*.asv
