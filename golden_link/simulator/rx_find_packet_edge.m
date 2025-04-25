@@ -1,26 +1,24 @@
-function detected_packet = rx_find_packet_edge(rx_signal,threshold)
+function detected_packet = rx_find_packet_edge(rx_signal, sim_options)
 
-% global sim_consts;
+global sim_consts;
 
-% search_win = 800;
-search_win = 130;
+search_win = 800;
+% search_win = 130;
 D = 16;
 % threshold = 0.75;
 
-% if sim_options.PacketDetection
+if sim_options.PacketDetection
    rx_len = length(rx_signal);
 
-   rx_signal = rx_signal.';
+%    rx_signal = rx_signal.';
    
    % Calculate the delayd correlation
    delay_xcorr = rx_signal(:,1:search_win+2*D).*conj(rx_signal(:,1*D+1:search_win+3*D));
-%    delay_xcorr = rx_signal(1:search_win+2*D).*conj(rx_signal(1*D+1:search_win+3*D));
       
    % Moving average of the delayed correlation
    ma_delay_xcorr = abs(filter(ones(1,2*D), 1, delay_xcorr, [], 2));
    
    % Moving average of received power
-%    ma_rx_pwr = filter(ones(1,2*D), 1, abs(rx_signal(1*D+1:search_win+3*D)).^2,[], 2);
    ma_rx_pwr = filter(ones(1,2*D), 1, abs(rx_signal(:,1*D+1:search_win+3*D)).^2,[], 2);
 
 
@@ -37,11 +35,11 @@ D = 16;
    % combine antennas, if rx diversity is used
    ma_M = sum(ma_M, 1);
    
-%    if ~sim_options.UseRxDiv
-      
-%    else
-%       threshold = 1.5;
-%    end
+   if ~sim_options.UseRxDiv
+       threshold = 0.75;
+   else
+      threshold = 1.5;
+   end
    
    thres_idx = find(ma_M > threshold);
    if isempty(thres_idx)
@@ -50,9 +48,9 @@ D = 16;
       thres_idx = thres_idx(1);
    end
    
-% else
-%    thres_idx = sim_consts.ExtraNoiseSamples;
-% end;
+else
+   thres_idx = sim_consts.ExtraNoiseSamples;
+end;
 
 % check if the packet has been detected too late, 
 % > sim_consts.extra_noise_samples + 35 index 

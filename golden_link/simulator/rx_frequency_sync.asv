@@ -67,15 +67,14 @@ if sim_options.FreqSync
 
     ang = cordicatan2(sum_q,sum_i);
     denominator = (2*D*pi/sim_consts.SampFreq);
-    freq_est_int = -double(ang) / denominator;
+    freq_est_int = -ang / denominator;
 %     freq_est_int = -ang * 200000;
 %     radians_per_sample_int = 2*pi*freq_est_int/sim_consts.SampFreq;
 
     samples = (1:length(rxsignal));
 
-    correction_signal_i = cos(2*pi*freq_est_int*samples/sim_consts.SampFreq);
-    correction_signal_q = sin(2*pi*freq_est_int*samples/sim_consts.SampFreq);
-    correction_signal_complex = complex(correction_signal_i,correction_signal_q);
+    correction_signal_int = cos()
+
 
 else
    % Magic number

@@ -49,38 +49,36 @@ end
 % Fifo
 rxWaveform_norm_complex = rx_blade;
 % 
-% int_i = int16(real(rx_blade));
-% int_q = int16(imag(rx_blade));
-% 
-% delay_sample_fifo_out_i = [zeros(17,1); int_i(2:end-16)];
-% delay_sample_fifo_out_q = [zeros(17,1); int_q(2:end-16)];
+int_i = int16(real(rx_blade));
+int_q = int16(imag(rx_blade));
+
+delay_sample_fifo_out_i = [zeros(17,1); int_i(2:end-16)];
+delay_sample_fifo_out_q = [zeros(17,1); int_q(2:end-16)];
 
 delay_sample_fifo_out = [zeros(17,1); rxWaveform_norm_complex(2:end-16)];
 % Комплексный умножитель
+% a = conj(delay_sample_fifo_out);
+% b = -delay_sample_fifo_out_q;
 delay_prod_inst = rxWaveform_norm_complex .* conj(delay_sample_fifo_out);
 
-% % conj
-% delay_prod_inst_int_real = int32(int_i).* int32(delay_sample_fifo_out_i) - int32(int_q).*int32(-delay_sample_fifo_out_q);
+% % % conj
+delay_prod_inst_int_real = int32(int_i) .* int32(delay_sample_fifo_out_i) - int32(int_q).* int32(-delay_sample_fifo_out_q);
 % delay_prod_inst_int_imag = int32(int_i).* int32(delay_sample_fifo_out_q) + int32(int_i).*int32(-delay_sample_fifo_out_q);
 
+% out_word = xor(int2bit(abs(delay_prod_inst_int_real)-(sign(delay_prod_inst_int_real) < 0),32), repmat(sign(delay_prod_inst_int_real) < 0,32,1)); 
+
+% delay_prod_inst_int_real_bit = dec2bin(delay_prod_inst_int_real,32);
+
+% 
+% delay_prod_inst_int_real_bit_shift = bitshift(delay_prod_inst_int_real_bit,1);
+% delay_prod_inst_int_real_bit_int = bin2dec(delay_prod_inst_int_real_bit_shift,32);
 
 % Отбрасываем один бит с округлением
 delay_prod_inst = floor(delay_prod_inst ./ 2);
-%% Проверка
-% Сверяем с verilog fifo
-fifo_verilog = importdata('test_signals\verilog\fifo_dout.txt');
-size_fifo_dat = size(fifo_verilog);
-error_ver_fifo = real(delay_sample_fifo_out(18:size_fifo_dat(1)+17)) - fifo_verilog(1:end);
-plot(error_ver_fifo)
 
-% Сверяем с verilog комплексный умножитель числителя
-complex_mult_numerator = importdata('test_signals\verilog\complex_mult_numerator.txt');
-size_ref = length(complex_mult_numerator);
-ref = real(delay_prod_inst(18:size_ref+17));
-error_ver_complex_numerator = ref - complex_mult_numerator(1:end);
-subplot(6,1,1);
-plot(error_ver_complex_numerator)
-title('Ошибка после комплексного умножителя в числителе')
+% delay_prod_inst_int_real1 = (delay_prod_inst_int_real);
+% 
+% err = delay_prod_inst - delay_prod_inst_int_real;
 %% Окно с суммой I и Q
 delay_prod = delay_prod_inst;
 
@@ -93,15 +91,6 @@ for i = 2 : size(delay_prod_inst)
 end
 
 delay_prod_inst = floor(delay_prod_inst./16);
-%% Проверка 
-% сверяем с verilog окно числителя
-avg_dout_dual = importdata('test_signals\verilog\avg_dout_dual.txt');
-size_ref = size(avg_dout_dual);
-ref = real(delay_prod_inst(18:size_ref(1)));
-error_ver_avg_dual = ref - avg_dout_dual(1:size_ref(1)-17);
-subplot(6,1,2);
-plot(error_ver_avg_dual)
-title('Ошибка после окна в числителе')
 
 %% 
 % abs
@@ -133,17 +122,7 @@ beta = 1/4;
 mag = alpha*max_d + floor(beta*min_d);
 mag = mag.';
 
-%% Проверка
-% сверяем с verilog амплитуду числителя
-prod_mag = importdata('test_signals\verilog\prod_mag.txt');
 
-size_ref = size(prod_mag);
-ref = mag(18:size_ref(1));
-
-error_ver_prod_mag = ref - prod_mag(1:size_ref(1)-17);
-subplot(6,1,3);
-plot(error_ver_prod_mag)
-title('Ошибка после вычисления амплитуды в числителе')
 %% Знаменатель
 % Комплексный умножитель
 complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
@@ -175,15 +154,7 @@ end
 
 complex_mult = floor(complex_mult./16);
 
-%% Проверка
-% сверяем с verilog окно знаменателя
-avg_dout = importdata('test_signals\verilog\avg_dout.txt');
-size_ref = size(avg_dout);
-ref = complex_mult(1:size_ref(1));
-error_ver = ref - avg_dout;
-subplot(6,1,5);
-plot(error_ver)
-title('Ошибка после окна в знаменателе')
+
 %% 
 threshold_scale = 1;
 if (threshold_scale == 1)
@@ -191,17 +162,7 @@ if (threshold_scale == 1)
 else
     complex_mult = floor(complex_mult ./2) + floor(complex_mult ./4);
 end
-%%  Проверка
-% сверяем с verilog получившееся значение знаменателя
-prod_thres  = importdata('test_signals\verilog\prod_thres.txt');
 
-size_ref = size(prod_thres);
-ref = complex_mult(18:size_ref(1));
-
-error_ver = ref - prod_thres(1:size_ref(1)-17);
-subplot(6,1,6);
-plot(error_ver)
-title('Ошибка в знаменателе')
 %%
 pos_count = 0;
 neg_count = 0;

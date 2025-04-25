@@ -267,6 +267,32 @@ for i = 1:2
     init_value = init_value + 10000; % прибавляем отсчеты, чтобы корреляция повторно не срабатывала на одной и той же преамбуле пакета
 end
 
+     cfgHT = wlanHTConfig; % Create packet configuration
+     chanBW = cfgHT.ChannelBandwidth;
+     numSTS = cfgHT.NumSpaceTimeStreams;
+     noisePower = -20;
+     awgnChannel = comm.AWGNChannel;
+     awgnChannel.NoiseMethod = 'Variance';
+     awgnChannel.Variance = 10^(noisePower/10);
+
+     Nst = 56;  % Data and pilot OFDM subcarriers in 20MHz, HT format
+     Nfft = 64; % FFT size for 20MHz bandwidth
+     nVarHT = 10^(noisePower/10)*(Nst/Nfft); % non-HT noise variance
+
+     NumRxAnts = 1;
+     % Average noise estimate over 100 independent noise realization
+     for n=1:100
+        % Generate LLTF and add noise
+        rxSym = awgnChannel(wlanLLTF(cfgHT));
+        y = wlanLLTFDemodulate(rxSym,cfgHT);
+        noiseEst(n) = helperNoiseEstimate(y,chanBW,numSTS);
+     end
+
+     % Check noise variance estimates without Channel
+     noiseEstError = 10*log10(mean(noiseEst))-10*log10(nVarHT);
+     disp(['Error between noise variance and mean estimated noise ', ...
+     'power(dB): ' num2str(noiseEstError,'%2.2f ')]);
+
 for i = 1:length(thres_idx_array)
     if (i == length(thres_idx_array))
         rxWaveform = rxWaveform_receive(thres_idx_array(i)+1:end-1);
