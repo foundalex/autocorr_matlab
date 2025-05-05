@@ -10,4 +10,4 @@
 #/*.golden_link
 /*resources
 /test_signals/*.csv
-/*.asv
+/golden_link/simulator/*.asv

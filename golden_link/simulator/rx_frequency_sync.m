@@ -35,14 +35,15 @@ if sim_options.FreqSync
 
    %% user defined interval (last 5 symbols)
    phase1 = rxsignal(:,65:145).*conj(rxsignal(:,81:161));
+%    phase1 = rxsignal(:,30:142).*conj(rxsignal(:,46:158));
    phase1 = sum(phase1, 2);
-   freq_est_user = -angle(phase1) / (2*D*pi/sim_consts.SampFreq);
+   freq_est_double = -angle(phase1) / (2*D*pi/sim_consts.SampFreq);
     
     %% int 
     
     %debug
-    phase_d = rxsignal(:,65:145).*conj(rxsignal(:,81:161));
-    phase_d = phase_d.' .* 2^22;
+%     phase_d = rxsignal(:,65:145).*conj(rxsignal(:,81:161));
+%     phase_d = phase_d.' .* 2^22;
 
     %translate to int
     rxsignal_preamb = rxsignal(2:161); 
@@ -65,17 +66,36 @@ if sim_options.FreqSync
         sum_q = sum_q + phase_detect_q(i);
     end
 
+    samples = (0:length(rxsignal)-1);
+
     ang = cordicatan2(sum_q,sum_i);
     denominator = (2*D*pi/sim_consts.SampFreq);
-    freq_est_int = -double(ang) / denominator;
-%     freq_est_int = -ang * 200000;
-%     radians_per_sample_int = 2*pi*freq_est_int/sim_consts.SampFreq;
+    %%
+%     freq_est_int = -double(ang) / denominator;
+%     correction_signal_i = cos(2*pi*freq_est_int*samples/sim_consts.SampFreq);
+%     correction_signal_q = sin(2*pi*freq_est_int*samples/sim_consts.SampFreq);
+%     correction_signal_complex = complex(correction_signal_i,correction_signal_q);
+    %%
+    % from openofdm 
+    freq_est_ofdm = double(ang) / 16;
+    freq_ofdm = -freq_est_ofdm / (2 * pi/20000000);
+%     correction_signal_i_ofdm = cos(freq_est_ofdm*samples);
+%     correction_signal_q_ofdm = sin(freq_est_ofdm*samples);
+%     correction_signal_complex_ofdm = complex(correction_signal_i_ofdm,correction_signal_q_ofdm);
 
-    samples = (1:length(rxsignal));
+%     freq_est_ofdm_int = ang / 16;
+%     correction_signal_i_ofdm_int = cos(freq_est_ofdm*samples);
+%     correction_signal_q_ofdm_int = sin(freq_est_ofdm*samples);
+%     correction_signal_complex_ofdm_int = complex(correction_signal_i_ofdm_int,correction_signal_q_ofdm_int);
 
-    correction_signal_i = cos(2*pi*freq_est_int*samples/sim_consts.SampFreq);
-    correction_signal_q = sin(2*pi*freq_est_int*samples/sim_consts.SampFreq);
-    correction_signal_complex = complex(correction_signal_i,correction_signal_q);
+    freq_err = freq_est - freq_ofdm;
+
+    out_signal_int = cordicrotate(freq_est_ofdm,rxsignal);
+    %%
+    % error openofdm and example 
+%     err = correction_signal_complex - complex(correction_signal_i_ofdm,-correction_signal_q_ofdm);
+%     figure(2);
+%     plot(imag(err))
 
 else
    % Magic number
@@ -88,7 +108,19 @@ siglen=length(rxsignal(1,:));
 time_base=0:siglen-1;
 correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1);
 
+% % compare two methods
+% error = correction_signal - correction_signal_complex; 
+% figure(3);
+% plot(real(error))
+
 % And finally apply correction on the signal
 
 out_signal = rxsignal.*correction_signal;
+
+out_error = out_signal - out_signal_int; 
+figure(2);
+subplot(2,1,1)
+plot(real(out_error))
+subplot(2,1,2)
+plot(imag(out_error))
 
