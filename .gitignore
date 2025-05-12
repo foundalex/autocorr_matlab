@@ -11,3 +11,4 @@
 /*resources
 /test_signals/*.csv
 /golden_link/simulator/*.asv
+/correlator/*.asv
