@@ -38,27 +38,8 @@ if sim_options.FreqSync
 %    phase1 = rxsignal(:,30:142).*conj(rxsignal(:,46:158));
    phase1 = sum(phase1, 2);
    freq_est_double = -angle(phase1) / (2*D*pi/sim_consts.SampFreq);
-   ang_cordic = cordicangle(phase1,8);
-   ang_cordic_user = cordic_angle(phase1,8);
-   
-   %% cordic angle
-
-   sin_table = [0.707; 0.4472; 0.2425; 0.124; 0.0624; 0.0312; 0.0156];
-   cos_table = [0.707; 0.8944; 0.9701; 0.9923; 0.9981; 0.9995; 0.9999];
-
-   tan_v = imag(phase)/real(phase);
-   xn = 1;
-   yn = 0;
-
-   for i = 1:6
-       if (yn < 0)
-            xn = xn*cos_table(i) - yn*sin_table(i);
-            yn = yn*cos_table(i) + xn*sin_table(i);
-       else
-            xn = xn*cos_table(i) + yn*sin_table(i);
-            yn = yn*cos_table(i) - xn*sin_table(i);
-       end
-   end
+   ang_cordic = cordicangle(phase1,8)*180/pi;
+%    ang_cordic_user = cordic_angle(phase1,8);
 
    %% int 
     
@@ -91,6 +72,9 @@ if sim_options.FreqSync
 
     ang = cordicatan2(sum_q,sum_i);
     denominator = (2*D*pi/sim_consts.SampFreq);
+    %%
+    cordic_user = cordic_angle_int(sum_i, sum_q, 8);
+    ang_error = ang_cordic - (cordic_user/256);
     %%
 %     freq_est_int = -double(ang) / denominator;
 %     correction_signal_i = cos(2*pi*freq_est_int*samples/sim_consts.SampFreq);

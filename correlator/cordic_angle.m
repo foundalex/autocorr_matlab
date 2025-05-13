@@ -2,7 +2,10 @@
 % Doc 51 - Atan2 Cordic Algorithm.pdf
 % https://dspguru.com/dsp/faqs/cordic/
 
+
+
 function angle1 = cordic_angle(phase, iterations)
+
 
    tan_table = [1; 0.5; 0.25; 0.125; 0.0625; 0.0312; 0.0156; 0.0078];
 
@@ -14,8 +17,8 @@ function angle1 = cordic_angle(phase, iterations)
     % atan(2^-4) = 0.0624 = 0.0624 * 180/pi = 3.5763 degrees
     % atan(2^-5) = 0.0312 = 0.0312 * 180/pi = 1.7899 degrees
     
-   atan_table = [0.7854; 0.4636; 0.2450; 0.1244; 
-                 0.0624; 0.0312; 0.0156; 0.0078];
+   atan_table = [0.785398163397448; 0.463647609000806; 0.244978663126864; 0.124354994546761; 
+                 0.062418809995957; 0.031239833430268; 0.015623728620477; 0.007812341060101];
 
    xt = real(phase);
    yt = imag(phase);
@@ -23,12 +26,13 @@ function angle1 = cordic_angle(phase, iterations)
    x_tmp = xt;
        
   % https://dspguru.com/dsp/faqs/cordic/   3.2.2
-  
+ 
   if (xt < 0)
         if (yt > 0)
             % поворот на -90 градусов
             xt = yt;        % I = Q
             yt = -x_tmp;    % Q = - I
+
             angle1 = pi/2; % начальный вектор имеет фазу в 90 градусов
         else
             % поворот на 90 градусов 
@@ -45,7 +49,7 @@ function angle1 = cordic_angle(phase, iterations)
     for i = 1:iterations
     % против часовой стрелки
         if (yt >= 0)
-            xn_t = xt + yt * tan_table(i); 
+            xn_t = xt + yt * tan_table(i);
             yn_t = yt - xt * tan_table(i);
             angle1 = angle1 + atan_table(i);
         else
