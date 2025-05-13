@@ -38,6 +38,7 @@ if sim_options.FreqSync
 %    phase1 = rxsignal(:,30:142).*conj(rxsignal(:,46:158));
    phase1 = sum(phase1, 2);
    freq_est_double = -angle(phase1) / (2*D*pi/sim_consts.SampFreq);
+   angle_m = angle(phase)*180/pi;
    ang_cordic = cordicangle(phase1,8)*180/pi;
 %    ang_cordic_user = cordic_angle(phase1,8);
 
@@ -72,18 +73,20 @@ if sim_options.FreqSync
 
     ang = cordicatan2(sum_q,sum_i);
     denominator = (2*D*pi/sim_consts.SampFreq);
-    %%
+    %% cordic angle
     cordic_user = cordic_angle_int(sum_i, sum_q, 8);
+    cordic_user_rad = -(double((cordic_user/256))*pi/180)/16;
     ang_error = ang_cordic - (cordic_user/256);
     %%
 %     freq_est_int = -double(ang) / denominator;
 %     correction_signal_i = cos(2*pi*freq_est_int*samples/sim_consts.SampFreq);
 %     correction_signal_q = sin(2*pi*freq_est_int*samples/sim_consts.SampFreq);
 %     correction_signal_complex = complex(correction_signal_i,correction_signal_q);
-    %%
+    %% OPEN OFDM
     % from openofdm 
     freq_est_ofdm = double(ang) / 16;
     freq_ofdm = -freq_est_ofdm / (2 * pi/20000000);
+
 %     correction_signal_i_ofdm = cos(freq_est_ofdm*samples);
 %     correction_signal_q_ofdm = sin(freq_est_ofdm*samples);
 %     correction_signal_complex_ofdm = complex(correction_signal_i_ofdm,correction_signal_q_ofdm);
