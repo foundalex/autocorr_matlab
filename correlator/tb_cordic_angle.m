@@ -2,11 +2,12 @@
 a = 100;
 b = -100;
 n = 100;
+niters = 1;
 
 
-phase = -81.2793 + -4.089i;
-cordic_user = cordic_angle(phase,8)*180/pi;
-cordic_matlab = cordicangle(phase,8)*180/pi;
+phase = 81.2793 + 4.089i;
+cordic_user = cordic_angle(phase,niters)*180/pi;
+cordic_matlab = cordicangle(phase,niters)*180/pi;
 
 for k = 1:n
     i = a + (b-a).*rand(1,1);

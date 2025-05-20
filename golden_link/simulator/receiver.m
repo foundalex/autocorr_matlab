@@ -25,6 +25,30 @@ fine_time_est = rx_fine_time_sync(rx_signal, sim_options);
 % Time synchronized signal
 sync_time_signal = rx_signal(:,fine_time_est + sim_options.RxTimingOffset:length(rx_signal(1,:)));
 
+% %%
+% cfgHE = wlanHESUConfig;
+% cbw = 'CBW20';
+% % waveform = wlanWaveformGenerator(1,cfgHE);
+% %Получите индексы поля WLAN, которые содержат модулируемые поля L-SIG и RL-SIG.
+% 
+% % ind = wlanFieldIndices(cfgHE);
+% % rxLSIG = waveform(ind.LSIG(1):ind.RLSIG(2),:);
+% rxLSIG = rx_signal(2:161).';
+% %Выполните демодуляцию ортогонального мультиплексирования деления частоты (OFDM), чтобы извлечь поле L-SIG.
+% 
+% lsigDemod = wlanHEDemodulate(rxLSIG,'L-SIG',cbw);
+% %Насчитайте символы L-SIG и RL-SIG, возвратите предHE информация о OFDM и извлеките демодулируемые символы L-SIG.
+% 
+% lsigDemodAverage = mean(lsigDemod,2);
+% preHEInfo = wlanHEOFDMInfo('L-SIG',cbw);
+% lsig = lsigDemodAverage(preHEInfo.DataIndices,:);
+% %Восстановите биты информации о L-SIG и другую информацию, не приняв шума канала. Отобразите результат проверки четности.
+% 
+% noiseVarEst = 0;
+% [bits,failCheck,info] = wlanLSIGBitRecover(lsig,noiseVarEst);
+% disp(failCheck);
+%%
+
 % Return to frequency domain
 [freq_tr_syms, freq_data_syms, freq_pilot_syms] = rx_timed_to_freqd(sync_time_signal, sim_options);
 
