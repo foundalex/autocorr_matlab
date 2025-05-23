@@ -15,27 +15,6 @@ for i = 1:512
     str_q_array(i) = bin2dec(str_q);
 end
 %%
-% cfgHE = wlanHESUConfig;
-% cbw = cfgHE.ChannelBandwidth;
-% waveform = wlanWaveformGenerator(1,cfgHE);
-% %Получите индексы поля WLAN, которые содержат модулируемые поля L-SIG и RL-SIG.
-% 
-% ind = wlanFieldIndices(cfgHE);
-% rxLSIG = waveform(ind.LSIG(1):ind.RLSIG(2),:);
-% %Выполните демодуляцию ортогонального мультиплексирования деления частоты (OFDM), чтобы извлечь поле L-SIG.
-% 
-% lsigDemod = wlanHEDemodulate(rxLSIG,'L-SIG',cbw);
-% %Насчитайте символы L-SIG и RL-SIG, возвратите предHE информация о OFDM и извлеките демодулируемые символы L-SIG.
-% 
-% lsigDemodAverage = mean(lsigDemod,2);
-% preHEInfo = wlanHEOFDMInfo('L-SIG',cbw);
-% lsig = lsigDemodAverage(preHEInfo.DataIndices,:);
-% %Восстановите биты информации о L-SIG и другую информацию, не приняв шума канала. Отобразите результат проверки четности.
-% 
-% noiseVarEst = 0;
-% [bits,failCheck,info] = wlanLSIGBitRecover(lsig,noiseVarEst);
-% disp(failCheck);
-%%
 angle_rad_int_shift = double(-angle_rad_int)/16;
 pi_int = 1608;
 index = 0;
@@ -44,7 +23,7 @@ next_phase_correction = 0;
 for i = 1:n
 
     if (double(angle_rad_int)/512 < 0)
-        next_phase_correction = next_phase_correction - floor(angle_rad_int_shift);
+        next_phase_correction = next_phase_correction - (angle_rad_int_shift/512);
         if (next_phase_correction <= -pi_int)
             next_phase_correction = next_phase_correction + 2*pi_int;
         elseif (next_phase_correction >= pi_int)
@@ -58,47 +37,28 @@ for i = 1:n
         else
             quadrant = 0;
         end
-        index = abs(next_phase_correction);
+        index = floor(abs(next_phase_correction));
     elseif abs(next_phase_correction) <= pi_int/2
         if (next_phase_correction < 0)
             quadrant = 5;
         else
             quadrant = 1;
         end
-
-        if mod(i,25) == 0
-            index = abs(next_phase_correction) - pi_int/2 ;
-        else
-            index = pi_int/2 - abs(next_phase_correction);
-        end
-
-%         index = pi_int/2 - abs(next_phase_correction);
-
+        index = floor(pi_int/2 - abs(next_phase_correction));
     elseif abs(next_phase_correction) <= pi_int*3/4
         if (next_phase_correction < 0)
             quadrant = 6;
         else
             quadrant = 2;
         end
-
-        if mod(i,25) == 0
-            index = angle_rad_int + abs(next_phase_correction) - pi_int/2;
-        else
-            index = abs(next_phase_correction) - pi_int/2;
-        end
-
+        index = floor(abs(next_phase_correction) - pi_int/2);
     else
         if (next_phase_correction < 0)
             quadrant = 7;
         else
             quadrant = 3;
         end
-
-%         if mod(i,25) == 0
-%             index = pi_int - abs(next_phase_correction);
-%         else
-            index = pi_int - abs(next_phase_correction) - floor(angle_rad_int_shift);
-%         end
+        index = round(pi_int - abs(next_phase_correction));
     end
     
     indexiii(i) = index;
@@ -134,3 +94,7 @@ end
 
 dds_cos = rot_i.';
 dds_sin = rot_q.';
+
+% nn = (1:length(cos1)).';
+% figure(3)
+% plot(nn, indexiii, nn, angle(complex(dds_cos,dds_sin))*100)

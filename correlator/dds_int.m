@@ -15,42 +15,22 @@ for i = 1:512
     str_q_array(i) = bin2dec(str_q);
 end
 %%
-% cfgHE = wlanHESUConfig;
-% cbw = cfgHE.ChannelBandwidth;
-% waveform = wlanWaveformGenerator(1,cfgHE);
-% %Получите индексы поля WLAN, которые содержат модулируемые поля L-SIG и RL-SIG.
-% 
-% ind = wlanFieldIndices(cfgHE);
-% rxLSIG = waveform(ind.LSIG(1):ind.RLSIG(2),:);
-% %Выполните демодуляцию ортогонального мультиплексирования деления частоты (OFDM), чтобы извлечь поле L-SIG.
-% 
-% lsigDemod = wlanHEDemodulate(rxLSIG,'L-SIG',cbw);
-% %Насчитайте символы L-SIG и RL-SIG, возвратите предHE информация о OFDM и извлеките демодулируемые символы L-SIG.
-% 
-% lsigDemodAverage = mean(lsigDemod,2);
-% preHEInfo = wlanHEOFDMInfo('L-SIG',cbw);
-% lsig = lsigDemodAverage(preHEInfo.DataIndices,:);
-% %Восстановите биты информации о L-SIG и другую информацию, не приняв шума канала. Отобразите результат проверки четности.
-% 
-% noiseVarEst = 0;
-% [bits,failCheck,info] = wlanLSIGBitRecover(lsig,noiseVarEst);
-% disp(failCheck);
-%%
 pi_int = 1608;
-% pi_int = 180*512;
-%
 index = 0;
 next_phase_correction = 0;
-
-for i = 1:n
+sin1(1) = str_i_array(index+1);
+cos1(1) = str_q_array(index+1);
+for i = 2:n
 
     if (angle_rad_int < 0)
-        next_phase_correction = next_phase_correction - round((angle_in_rad_int_16*512),3);
-%             next_phase_correction = next_phase_correction - (angle_in_rad_int_16/512);
+        next_phase_correction = next_phase_correction - 16;
+%             next_phase_correction = next_phase_correction - (angle_in_rad_int_16*512);
         if (next_phase_correction < -pi_int)
             next_phase_correction = next_phase_correction + 2*pi_int;
         elseif (next_phase_correction > pi_int)
             next_phase_correction = next_phase_correction - 2*pi_int;
+        elseif (i == 129 || i == 192)
+            next_phase_correction = (next_phase_correction - (16*3)-1 - 16*16);
         end
     end
 
@@ -74,7 +54,7 @@ for i = 1:n
         else
             quadrant = 2;
         end
-          index = floor(abs(next_phase_correction) - pi_int/2);
+            index = floor(abs(next_phase_correction) - pi_int/2);
     else
         if (next_phase_correction < 0)
             quadrant = 7;
@@ -117,39 +97,45 @@ end
 dds_cos = rot_i.';
 dds_sin = rot_q.';
 
-%     spectrumScope = spectrumAnalyzer(SampleRate=20000000, ...            
-%             AveragingMethod='exponential',ForgettingFactor=0.99, ...
-%             YLimits=[-30 10],ShowLegend=true);
-% 
-%     spectrumScope([dds_cos]);
+figure(14)
+n11 = (1:256).';
+cosi = importdata('test_signals\rotate_mult_i.txt');
+cosi_dds = importdata('test_signals\dds_out.txt');
+% ab = cosi_dds*2^-15*2048;
+plot(n11, cosi)
+
+
 %%
-sintablen = 3200;
-SINTAB = (sin(2*pi*(0:sintablen-1)./sintablen));
-COSTAB = (cos(2*pi*(0:sintablen-1)./sintablen));
-
-fs1 = 20000000;
-F_required = 100000;
-
-index = 1; 
-step1 = (F_required/fs1)*sintablen;
-step = round(abs(257)/16);
-
-for i = 1:n
-    dds_cos1(i) = COSTAB(round(index));
-    dds_sin1(i) = SINTAB(round(index));
-    index = index+step;
-    if index>sintablen
-        index = index-sintablen;
-    end
-    indexiii(i) = index;
-end
-figure(12)
-nn = 1:n;
-nn = nn.';
-plot(nn, dds_cos, nn, round(dds_cos1*2^11), nn, indexiii); 
-
-dds_cos = round(dds_cos1*2^11).';
-dds_sin = round(dds_sin1*2^11).';
+% sintablen = 1024;
+% SINTAB = (-sin(2*pi*(0:sintablen-1)./sintablen));
+% COSTAB = (cos(2*pi*(0:sintablen-1)./sintablen));
+% % time_base=0:siglen-1;
+% % correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1);
+% fs1 = 20000000;
+% F_required = 100000;
+% 
+% index = 1; 
+% step = round((F_required/fs1)*sintablen);
+% 
+% for i = 1:n
+%     dds_cos1(i) = COSTAB(round(index));
+%     dds_sin1(i) = SINTAB(round(index));
+%     index = index+step;
+%     if index>sintablen
+%         index = index-sintablen;
+%     end
+% 
+%     indexiii(i) = index;
+% end
+% figure(12)
+% nn = 1:n;
+% nn = nn.';
+% plot(nn, round(dds_cos1*2^11), nn, indexiii); 
+% title('Сравнение косинусов из DDS и из примера Матлаб')
+% xlabel('Номер отсчета') 
+% ylabel('Амплитуда (int)') 
+% dds_cos = round(dds_cos1*2^11).';
+% dds_sin = round(dds_sin1*2^11).';
 % 
 %     spectrumScope = spectrumAnalyzer(SampleRate=fs1, ...            
 %             AveragingMethod='exponential',ForgettingFactor=0.99, ...

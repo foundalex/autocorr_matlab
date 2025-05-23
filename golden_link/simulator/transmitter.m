@@ -5,19 +5,19 @@ function [tx_signal, inf_bits, tx_bits] = transmitter(sim_options);
 global sim_consts;
 
 % Generate the information bits
-inf_bits = randn(1, sim_options.PacketLength) > 0;
+% inf_bits = randn(1, sim_options.PacketLength) > 0;
 
-% inf_bits = zeros(1,16*50);
-% inf_bits = logical(inf_bits);
-% for i = 1:50
-%     count = dec2bin(i,16);
-%     r = count - '0';
-%     for k = 1:16
-%         inf_bits(k+(i-1)*16) = logical(r(k));
-%     end
-% end
-% % inf_bits(1:24) = [1,0,0,1, 0, 0,1,0,0,0,1,0,1,0,0,0,0, 0, 0,0,1,0,1,0];
-% inf_bits(1:24) = [1,0,0,0,0,1, 0, 0,0,0,0,0,1,0,1,0,0,0,0, 0, 0,0,0,0];
+inf_bits = zeros(1,16*50);
+inf_bits = logical(inf_bits);
+for i = 1:50
+    count = dec2bin(i,16);
+    r = count - '0';
+    for k = 1:16
+        inf_bits(k+(i-1)*16) = logical(r(k));
+    end
+end
+% inf_bits(1:24) = [1,0,0,1, 0, 0,1,0,0,0,1,0,1,0,0,0,0, 0, 0,0,1,0,1,0];
+inf_bits(1:24) = [1,1,0,0, 0, 1,0,1,0,1,0,0,1,0,1,0,0, 0, 0,0,0,0,0,0];
 
 
 writematrix(inf_bits, 'test_signals\inf_bits.txt');

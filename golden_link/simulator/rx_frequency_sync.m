@@ -116,24 +116,36 @@ if sim_options.FreqSync
     radians_shift = double(phase_rad)/16/512;
 %     [dds_cos2, dds_sin2] = dds_int_my(phase_rad,n1);
 
-    [dds_cos1, dds_sin1] = dds_int(radians_, -radians_shift, n1); 
-
-    [dds_cos, dds_sin] = dds_int(-radians_per_sample*16, radians_per_sample, n1); 
+%     [dds_cos2, dds_sin2] = dds_int(radians_, -radians_shift, n1); 
+% 
+%     [dds_cos, dds_sin] = dds_int(-radians_per_sample*16, radians_per_sample, n1); 
   
     %% mult rx_signal on dds
 %     out_signal_int_i = (int32(dds_cos) .* int32(real(rxsignal_int)) - int32(dds_sin) .* int32(imag(rxsignal_int)));
 %     out_signal_int_q = (dds_cos .* imag(rxsignal_int) + dds_sin .* real(rxsignal_int));
 
-%% cordic rotate
-%     i_int = real(rxsignal_int);
-%     q_int = imag(rxsignal_int);
-%     niters_rotate = 14;
-%     gain = floor(256 * prod(sqrt(1+2.^(-2*(0:(niters_rotate-1))))));
-%     [p_cos, p_sin] = cordic_rotate_int(-phase_deg, gain, niters_rotate);
-% 
-%     i_correct = (i_int .* p_cos - q_int .* p_sin);
-%     q_correct = (i_int .* p_sin + q_int .* p_cos);
-% 
+    %% cordic rotate
+    i_int = real(rxsignal_int);
+    q_int = imag(rxsignal_int);
+    niters_rotate = 14;
+    pi_int = round(pi*512);
+    gain = floor(512 * prod(sqrt(1+2.^(-2*(0:(niters_rotate-1))))));
+    sig = cordicrotate(radians_per_sample,rxsignal,14);
+    phaser = 0;
+    for i = 1:length(rxsignal_int)    
+        [p_cos(i), p_sin(i)] = cordic_rotate_int(-phaser, gain, niters_rotate);
+
+        phaser = phaser + round(phase_rad/16);
+        if (phaser < -pi_int)
+            phaser = phaser + 2*pi_int;
+        elseif (phaser > pi_int)
+            phaser = phaser - 2*pi_int;
+        end
+    end
+%         i_correct = (i_int .* p_cos - q_int .* p_sin);
+%         q_correct = (i_int .* p_sin + q_int .* p_cos);
+%     end
+
 %     i_correct_double = double(i_correct).*2^-11;
 %     q_correct_double = double(q_correct).*2^-11;
 %     corrected_signal_complex = complex(i_correct_double,q_correct_double).';
@@ -158,50 +170,90 @@ siglen=length(rxsignal(1,:));
 time_base=0:siglen-1;
 correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1);
 %%
-% N = length(rxsignal)-1;
-% fd = 100000;
-% fs = 20000000;
-% bp = 12;
-% bd = 16;
-% ps = 90;
-% % calculate frequency tuning word (FTW) from desired frequency
-% ftw=round(fd/fs*2^bp);
+% sintablen = 2^11;
+% SINTAB = (-sin(2*pi*(0:sintablen-1)./sintablen));
+% COSTAB = (cos(2*pi*(0:sintablen-1)./sintablen));
+% % 
+% % SINTAB = round(SINTAB*sintablen);
+% % COSTAB = round(COSTAB*sintablen);
 % 
-% % calculate actual synthesized frequency (Hz)
-% f0=ftw*fs/2^bp;
+% fs1 = 20000000;
+% F_required = 100000;
+% index = 1; 
+% index1 = 1;
+% % step = ((F_required/fs1)*sintablen);
+% step = 16;
+% step1 = round((F_required/fs1)*sintablen);
 % 
-% % calculate phase tuning word (PTW) for start phase
-% ptw=round(mod(ps/360*2^bp,2^bp));
+% for i = 1:n1
+%     dds_cos1(i) = COSTAB((index));
+%     dds_sin1(i) = SINTAB(round(index));
 % 
-% % calculate actual synthesized phase start (scaled rad)
-% p0=ptw/2^bp;
+%     dds_cos2(i) = COSTAB(round(index1));
+%     dds_sin2(i) = SINTAB(round(index1));
 % 
-% % create time vector for sinusoid phase (s)
-% t=1/fs*[0:N-1];
+%     index = index+step;
+%     index1 = index1+step1;
 % 
-% % phase of sinusoid (rad)
-% phase=round(mod(f0*t+p0,1)*2^bp)/2^bp*2*pi;
+%     if index>sintablen
+%       index = index - sintablen;
+%     end
 % 
-% % quantized sinusoid value
-% s=round(sin(phase)*(2^bd-1));
-% 
-% % normailzed sinusoid
-% s=s/(2^bd-1);
+%     if index1>sintablen
+%       index1 = index1 - sintablen;
+%     end
+%     indexiii(i) = index;
+%     indexiii1(i) = index1;
+% end
+
+% figure(13)
+% n2 = (1:n1).';
+% plot(n2, indexiii, n2, indexiii1)
+
+% figure(14)
+% subplot(2,1,1)
+% plot(COSTAB);
+% subplot(2,1,2)
+% plot(angle(complex(COSTAB,SINTAB)));
 %%
-% n1 = 1100;
-nn = (1:length(rxsignal)-1).';
-% nn = (1:1100-1).';
-figure(2)
-a1 = dds_cos1(1:end-1);
+% lines = readlines("test_signals\rot_lut.txt");
+% % a = importdata("test_signals\rotate_mult_i.txt");
+% 
+% % convert int sine to double
+% for i = 1:512
+%     str = num2str(lines(i));
+%     r = str - '0';
+%     rr = dec2bin(r);
+%     str_q = [rr(17), rr(18), rr(19), rr(20), rr(21), rr(22), rr(23), rr(24), rr(25), rr(26), rr(27), rr(28), rr(29), rr(30), rr(31), rr(32)];
+%     str_i = [rr(1), rr(2), rr(3), rr(4), rr(5), rr(6), rr(7), rr(8), rr(9), rr(10), rr(11), rr(12), rr(13), rr(14), rr(15), rr(16)];
+% 
+%     str_i_array(i) = bin2dec(str_i);
+%     str_q_array(i) = bin2dec(str_q);
+% end
+% qw = (1:512).';
+% figure(20)
+% plot(qw, str_i_array, qw, round(COSTAB(1:512)*2048))
+% 
+% % dds_cos1 = round(dds_cos1*2^11).';
+% % dds_sin1 = round(dds_sin1*2^11).';
+
+
+%%
+nn = (1:length(rxsignal)).';
+figure(12);
+a1 = p_cos;
 a1 = a1;
-% a11 = time_base(1:end-1).';
-% a111 = a1.*a11;
-a2 = real(correction_signal(2:end)*2^11);
+% a2 = real(correction_signal*2^11);
+a2 = real(correction_signal);
 a2 = a2.';
+as = angle(correction_signal);
+% ar = angle(complex(dds_cos1,dds_sin1));
+% plot(nn, ar, nn, as);
+
 
 rx_w = importdata('test_signals\dds_out.txt');
 rx_w = rx_w*2^-15;
-
+figure(2);
 plot(nn, a1, nn, a2);
 title('Сравнение косинусов из DDS и из примера Матлаб')
 xlabel('Номер отсчета') 
@@ -209,11 +261,11 @@ ylabel('Амплитуда (int)')
 
 error_correction = a2 - a1;
 
-    spectrumScope = spectrumAnalyzer(SampleRate=20000000, ...            
-            AveragingMethod='exponential',ForgettingFactor=0.99, ...
-            YLimits=[-30 10],ShowLegend=true);
-
-    spectrumScope([a1, a2]);
+%     spectrumScope = spectrumAnalyzer(SampleRate=1000000, ...            
+%             AveragingMethod='exponential',ForgettingFactor=0.99, ...
+%             YLimits=[-30 10],ShowLegend=true);
+% 
+%     spectrumScope([a1.', a2]);
 % spectrumScope([rx_w]);
 %% And finally apply correction on the signal
 
