@@ -1,18 +1,21 @@
 
 function [p_cos, p_sin] = cordic_rotate_int(phase_deg, gain, niters)
 
-    for j = 0:14
-        atan_table_int(j+1) = int32(ceil(atan(2^-j)*512)); 
+scale = 2^28;
+pi_int = round(pi*scale);
+
+    for j = 0:niters
+        atan_table_int(j+1) = int32(ceil(atan(2^-j)*scale)); 
     end
 
-    if (phase_deg > 1608/2)
+    if (phase_deg > pi_int/2)
         xt = 0;
         yt = 512;
-        angle1 = 1608/2;
-    elseif (phase_deg < -1608/2)
+        angle1 = pi_int/2;
+    elseif (phase_deg < -pi_int/2)
         xt = 0;
         yt = -512;
-        angle1 = -1608/2;
+        angle1 = -pi_int/2;
     else
         xt = 512;
         yt = 0;

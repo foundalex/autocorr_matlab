@@ -96,12 +96,12 @@ if sim_options.FreqSync
     sum_complex = complex(sum_i_double,sum_q_double);
     error_sum = phase - sum_complex;
     %% cordic angle
-    niters_angle = 14;
+    niters_angle = 25;
     ang_cordic = cordicangle(phase,niters_angle); % matlab function
     ang_cordic1 = cordicangle(sum_complex,niters_angle); % matlab function
 %     ang_cordic2 = cordic_angle(sum_complex,8);
 
-    phase_rad = cordic_angle_int(sum_i, sum_q, 14);
+    phase_rad = cordic_angle_int(sum_i, sum_q, niters_angle);
 
 %     ang_error = angle_m - (phase_deg/256); % compare results
 %     phase_rad_shifted = (bitshift(-phase_rad,-4,'int32')); % window size 16
@@ -109,37 +109,39 @@ if sim_options.FreqSync
 %     phase_deg_example = radians_per_sample * 180/pi;
 %     a = double(phase_deg)/256*pi/180
 %     error_angle = radians_per_sample - a;
-
-    n1 = length(rxsignal_int);
-
-    radians_ = double(phase_rad)/512;
-    radians_shift = double(phase_rad)/16/512;
-%     [dds_cos2, dds_sin2] = dds_int_my(phase_rad,n1);
-
-%     [dds_cos2, dds_sin2] = dds_int(radians_, -radians_shift, n1); 
-% 
-%     [dds_cos, dds_sin] = dds_int(-radians_per_sample*16, radians_per_sample, n1); 
   
     %% mult rx_signal on dds
 %     out_signal_int_i = (int32(dds_cos) .* int32(real(rxsignal_int)) - int32(dds_sin) .* int32(imag(rxsignal_int)));
 %     out_signal_int_q = (dds_cos .* imag(rxsignal_int) + dds_sin .* real(rxsignal_int));
 
     %% cordic rotate
+    
     i_int = real(rxsignal_int);
     q_int = imag(rxsignal_int);
     niters_rotate = 14;
-    pi_int = round(pi*512);
+    pi_int = round(pi*2^28);
     gain = floor(512 * prod(sqrt(1+2.^(-2*(0:(niters_rotate-1))))));
-    sig = cordicrotate(radians_per_sample,rxsignal,14);
-    phaser = 0;
-    for i = 1:length(rxsignal_int)    
-        [p_cos(i), p_sin(i)] = cordic_rotate_int(-phaser, gain, niters_rotate);
 
-        phaser = phaser + round(phase_rad/16);
+
+    phaser = 0;
+    phaser1 = 0;
+    for i = 1:length(rxsignal_int)    
+        [p_cos(i), p_sin(i)] = cordic_rotate_int(-phaser1, gain, niters_rotate);
+
+        sig(i) = cordicrotate(phaser1/2^28,1,niters_rotate);
+
+        phaser1 = phaser1 + round(radians_per_sample,32)*2^28; %double(phase_rad)/16;
+        phaser = phaser + (phase_rad)/16;
         if (phaser < -pi_int)
             phaser = phaser + 2*pi_int;
         elseif (phaser > pi_int)
             phaser = phaser - 2*pi_int;
+        end
+
+        if (phaser1 < -pi_int)
+            phaser1 = phaser1 + 2*pi_int;
+        elseif (phaser1 > pi_int)
+            phaser1 = phaser1 - 2*pi_int;
         end
     end
 %         i_correct = (i_int .* p_cos - q_int .* p_sin);
@@ -149,8 +151,18 @@ if sim_options.FreqSync
 %     i_correct_double = double(i_correct).*2^-11;
 %     q_correct_double = double(q_correct).*2^-11;
 %     corrected_signal_complex = complex(i_correct_double,q_correct_double).';
+%% DDS
+    n1 = length(rxsignal_int);
 
-    %% OPEN OFDM
+%     radians_ = double(phase_rad)/512;
+%     radians_shift = double(phase_rad)/16/512;
+    [dds_cos2, dds_sin2] = dds_int_my(phase_rad,n1);
+
+%     [dds_cos2, dds_sin2] = dds_int(radians_, -radians_shift, n1); 
+% 
+%     [dds_cos, dds_sin] = dds_int(-radians_per_sample*16, radians_per_sample, n1); 
+
+%% OPEN OFDM
 %     ang = cordicatan2(sum_q,sum_i);
 %     freq_est_ofdm = double(ang) / 16;
 %     freq_ofdm = -freq_est_ofdm / (2 * pi/20000000);
@@ -216,40 +228,16 @@ correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1)
 % subplot(2,1,2)
 % plot(angle(complex(COSTAB,SINTAB)));
 %%
-% lines = readlines("test_signals\rot_lut.txt");
-% % a = importdata("test_signals\rotate_mult_i.txt");
-% 
-% % convert int sine to double
-% for i = 1:512
-%     str = num2str(lines(i));
-%     r = str - '0';
-%     rr = dec2bin(r);
-%     str_q = [rr(17), rr(18), rr(19), rr(20), rr(21), rr(22), rr(23), rr(24), rr(25), rr(26), rr(27), rr(28), rr(29), rr(30), rr(31), rr(32)];
-%     str_i = [rr(1), rr(2), rr(3), rr(4), rr(5), rr(6), rr(7), rr(8), rr(9), rr(10), rr(11), rr(12), rr(13), rr(14), rr(15), rr(16)];
-% 
-%     str_i_array(i) = bin2dec(str_i);
-%     str_q_array(i) = bin2dec(str_q);
-% end
-% qw = (1:512).';
-% figure(20)
-% plot(qw, str_i_array, qw, round(COSTAB(1:512)*2048))
-% 
-% % dds_cos1 = round(dds_cos1*2^11).';
-% % dds_sin1 = round(dds_sin1*2^11).';
-
-
-%%
 nn = (1:length(rxsignal)).';
-figure(12);
-a1 = p_cos;
+% figure(12);
+a1 = dds_cos2;
 a1 = a1;
 % a2 = real(correction_signal*2^11);
 a2 = real(correction_signal);
 a2 = a2.';
-as = angle(correction_signal);
-% ar = angle(complex(dds_cos1,dds_sin1));
-% plot(nn, ar, nn, as);
-
+% as = angle(correction_signal);
+% % ar = angle(complex(dds_cos1,dds_sin1));
+% % plot(nn, ar, nn, as);
 
 rx_w = importdata('test_signals\dds_out.txt');
 rx_w = rx_w*2^-15;
@@ -257,9 +245,9 @@ figure(2);
 plot(nn, a1, nn, a2);
 title('Сравнение косинусов из DDS и из примера Матлаб')
 xlabel('Номер отсчета') 
-ylabel('Амплитуда (int)') 
+ylabel('Амплитуда') 
 
-error_correction = a2 - a1;
+error_correction = abs(real(sig)) - abs(a1);
 
 %     spectrumScope = spectrumAnalyzer(SampleRate=1000000, ...            
 %             AveragingMethod='exponential',ForgettingFactor=0.99, ...

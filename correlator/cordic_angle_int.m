@@ -24,8 +24,10 @@ function angle_int = cordic_angle_int(i, q, iterations)
 %     atan_table_int(j+1) = int32(ceil((atan(2^-j)*180/pi)*256)); 
 % end
 
-for j = 0:14
-    atan_table_int(j+1) = int32(round(atan(2^-j)*512)); 
+scale = 2^28;
+pi_int = round(pi*scale)
+for j = 0:iterations
+    atan_table_int(j+1) = int32(round(atan(2^-j)*scale)); 
 end
 %% https://dspguru.com/dsp/faqs/cordic/   3.2.2
 
@@ -36,15 +38,15 @@ end
             % поворот на -90 градусов
             i = q;         % I = Q
             q = -i_tmp;    % Q = - I
-            angle_int = int32(1608/2); % начальный вектор имеет фазу в 90 градусов
+            angle_int = round(pi_int/2); % начальный вектор имеет фазу в 90 градусов
         else
             % поворот на 90 градусов 
             i = -q;        % I = - Q;
             q = i_tmp;     % Q = I
-            angle_int = int32(-1608/2); % начальный вектор имеет фазу в -90 градусов
+            angle_int = round(-pi_int/2); % начальный вектор имеет фазу в -90 градусов
         end
   else
-        angle_int = int32(0);
+        angle_int = (0);
   end
 %% https://dspguru.com/dsp/faqs/cordic/   3.2.3
 
