@@ -17,7 +17,7 @@ inf_bits = randn(1, sim_options.PacketLength) > 0;
 %     end
 % end
 % % inf_bits(1:24) = [1,0,0,1, 0, 0,1,0,0,0,1,0,1,0,0,0,0, 0, 0,0,1,0,1,0];
-% inf_bits(1:24) = [1,1,0,0, 0, 1,0,1,0,1,0,0,1,0,1,0,0, 0, 0,0,0,0,0,0];
+% inf_bits(1:24) = [1,1,0,0, 0, 1,0,1,0,1,0,0,1,0,1,0,1, 0, 0,0,0,0,0,0];
 
 
 writematrix(inf_bits, 'test_signals\inf_bits.txt');

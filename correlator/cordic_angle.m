@@ -7,7 +7,16 @@
 function angle1 = cordic_angle(phase, iterations)
 
 
-   tan_table = [1; 0.5; 0.25; 0.125; 0.0625; 0.0312; 0.0156; 0.0078; 0.0036; 0.0018; 0.0009];
+    tan_table(1) = 1;
+
+    for i = 2:iterations
+        tan_table(i) = tan_table(i-1)/2;
+    end
+
+    for j = 0:iterations
+        atan_table1(j+1) = atan(2^-j); 
+    end
+%    tan_table = [1; 0.5; 0.25; 0.125; 0.0625; 0.0312; 0.0156; 0.0078; 0.0036; 0.0018; 0.0009];
 
     % atan_table
     % atan(2^0) = 0.7854 = 0.7854 * 180/pi = 45 degrees
@@ -17,9 +26,9 @@ function angle1 = cordic_angle(phase, iterations)
     % atan(2^-4) = 0.0624 = 0.0624 * 180/pi = 3.5763 degrees
     % atan(2^-5) = 0.0312 = 0.0312 * 180/pi = 1.7899 degrees
     
-   atan_table = [0.785398163397448; 0.463647609000806; 0.244978663126864; 0.124354994546761; 
-                 0.062418809995957; 0.031239833430268; 0.015623728620477; 0.007812341060101;
-                 0.0039; 0.0020];
+%    atan_table = [0.785398163397448; 0.463647609000806; 0.244978663126864; 0.124354994546761; 
+%                  0.062418809995957; 0.031239833430268; 0.015623728620477; 0.007812341060101;
+%                  0.0039; 0.0020];
 
    xt = real(phase);
    yt = imag(phase);
@@ -52,12 +61,12 @@ function angle1 = cordic_angle(phase, iterations)
         if (yt >= 0)
             xn_t = xt + yt * tan_table(i);
             yn_t = yt - xt * tan_table(i);
-            angle1 = angle1 + atan_table(i);
+            angle1 = angle1 + atan_table1(i);
         else
             % по часовой стрелке
             xn_t = xt - yt * tan_table(i);
             yn_t = yt + xt * tan_table(i);
-            angle1 = angle1 - atan_table(i);
+            angle1 = angle1 - atan_table1(i);
         end
 
         xt = xn_t;

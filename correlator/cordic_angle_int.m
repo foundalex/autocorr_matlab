@@ -4,7 +4,7 @@
 % https://openofdm.readthedocs.io/en/latest/verilog.html
 
 %%
-function angle_int = cordic_angle_int(i, q, iterations)
+function angle_int = cordic_angle_int(i, q, iterations, width)
    
 % i = int32(-81.2793*2^11);
 % q = int32(-4.089*2^11);
@@ -24,13 +24,13 @@ function angle_int = cordic_angle_int(i, q, iterations)
 %     atan_table_int(j+1) = int32(ceil((atan(2^-j)*180/pi)*256)); 
 % end
 
-scale = 2^28;
+scale = 2^width;
 pi_int = round(pi*scale)
 for j = 0:iterations
-    atan_table_int(j+1) = int32(round(atan(2^-j)*scale)); 
+    atan_table_int(j+1) = int32(ceil(atan(2^-j)*scale)); 
 end
-%% https://dspguru.com/dsp/faqs/cordic/   3.2.2
 
+%% https://dspguru.com/dsp/faqs/cordic/   3.2.2
   i_tmp = i;
   
   if (i < 0)
@@ -38,28 +38,28 @@ end
             % поворот на -90 градусов
             i = q;         % I = Q
             q = -i_tmp;    % Q = - I
-            angle_int = round(pi_int/2); % начальный вектор имеет фазу в 90 градусов
+            angle_int = pi_int/2; % начальный вектор имеет фазу в 90 градусов
         else
             % поворот на 90 градусов 
             i = -q;        % I = - Q;
             q = i_tmp;     % Q = I
-            angle_int = round(-pi_int/2); % начальный вектор имеет фазу в -90 градусов
+            angle_int = -pi_int/2; % начальный вектор имеет фазу в -90 градусов
         end
   else
-        angle_int = (0);
+        angle_int = 0;
   end
 %% https://dspguru.com/dsp/faqs/cordic/   3.2.3
 
   for k = 0:iterations-1
   % против часовой стрелки
     if (q >= 0)
-        in = i + (bitshift(q,-k,'int32'));
-        qn = q - (bitshift(i,-k,'int32'));
+        in = (i + (bitshift(q,-k,'int32')));
+        qn = (q - (bitshift(i,-k,'int32')));
         angle_int = angle_int + atan_table_int(k+1);
     else
         % по часовой стрелке
-        in = i - (bitshift(q,-k,'int32'));
-        qn = q + (bitshift(i,-k,'int32'));
+        in = (i - (bitshift(q,-k,'int32')));
+        qn = (q + (bitshift(i,-k,'int32')));
         angle_int = angle_int - atan_table_int(k+1);
     end
 
