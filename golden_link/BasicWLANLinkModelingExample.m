@@ -132,13 +132,13 @@ data = wlanVHTData(txPSDU,cfgVHT);
 % A VHT waveform is constructed by prepending the non-HT and VHT
 % preamble fields with data
 txWaveform = [preamble;data]; % Transmit VHT PPDU
-offset = 22.5e3;
+offset = 100; %22.5e3;
 y = frequencyOffset(txWaveform,20000000,offset);
     %
     ii = round(real(y)*2^11);
     qq = round(imag(y)*2^11);
     your_variable = [ii qq];
-    dlmwrite('test_signals/rx_signal_gen_mcs_1_fo_22500.txt', your_variable);
+    dlmwrite('test_signals/rx_signal_gen_mcs_1_fo_100.txt', your_variable);
 
 % numPkts = 2;
 % bits = [1;0;0;1];

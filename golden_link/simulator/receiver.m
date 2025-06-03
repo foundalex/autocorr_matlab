@@ -13,7 +13,15 @@ if sim_options.UsePhaseNoise
    rx_signal = rx_signal.*exp(j*repmat(phase_noise, size(rx_signal,1), 1));
 end
 
-%packet search
+%% write to file signal
+% generation = 0;
+% if generation == 1
+%     ii = round(real(rx_signal)*2^11).';
+%     qq = round(imag(rx_signal)*2^11).';
+%     your_variable = [ii qq];
+%     dlmwrite('test_signals/rx_signal_22500.txt', your_variable);
+% end
+%% packet search
 rx_signal = rx_find_packet_edge(rx_signal, sim_options);
 
 % Frequency error estimation and correction

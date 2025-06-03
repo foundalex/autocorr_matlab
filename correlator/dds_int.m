@@ -4,16 +4,16 @@ function [dds_cos, dds_sin] = dds_int(angle_rad_int, n)
 % phase_verilog = importdata("test_signals\phase_correct.txt");
 
 % convert int sine to double
-% for i = 1:512
-%     str = num2str(lines(i));
-%     r = str - '0';
-%     rr = dec2bin(r);
-%     str_q = [rr(17), rr(18), rr(19), rr(20), rr(21), rr(22), rr(23), rr(24), rr(25), rr(26), rr(27), rr(28), rr(29), rr(30), rr(31), rr(32)];
-%     str_i = [rr(1), rr(2), rr(3), rr(4), rr(5), rr(6), rr(7), rr(8), rr(9), rr(10), rr(11), rr(12), rr(13), rr(14), rr(15), rr(16)];
-% 
-%     str_i_array(i) = bin2dec(str_i);
-%     str_q_array(i) = bin2dec(str_q);
-% end
+for i = 1:512
+    str = num2str(lines(i));
+    r = str - '0';
+    rr = dec2bin(r);
+    str_q = [rr(17), rr(18), rr(19), rr(20), rr(21), rr(22), rr(23), rr(24), rr(25), rr(26), rr(27), rr(28), rr(29), rr(30), rr(31), rr(32)];
+    str_i = [rr(1), rr(2), rr(3), rr(4), rr(5), rr(6), rr(7), rr(8), rr(9), rr(10), rr(11), rr(12), rr(13), rr(14), rr(15), rr(16)];
+
+    str_i_array(i) = bin2dec(str_i);
+    str_q_array(i) = bin2dec(str_q);
+end
 
 % VAL = pi;
 % SCALE = 2^11;
@@ -28,12 +28,14 @@ SIZE = 402*8;
 for k = 1:SIZE
     key(k) = k/MAX2*2*pi;
     i_I(k) = int16(round(cos(key(k))*2^11));
-    i_Q(k) = int16(round(-sin(key(k))*2^11));
+    i_Q(k) = int16(floor(-sin(key(k))*2^11));
 end
 
 next_phase_correction = int32(0);
+dds_cos(1) = i_I(1);
+dds_sin(1) = 0;
 %%
-for i = 1:n
+for i = 2:n
     if ((angle_rad_int) < 0)
         next_phase_correction = next_phase_correction - angle_rad_int;
         if (next_phase_correction < -SIZE)
@@ -42,7 +44,6 @@ for i = 1:n
             next_phase_correction = next_phase_correction - SIZE;
         end
     end
-
     index = (abs(next_phase_correction));
     dds_cos(i) = i_I(index);
     dds_sin(i) = i_Q(index);
@@ -51,7 +52,7 @@ end
 dds_cos = dds_cos.';
 dds_sin = dds_sin.';
 
-% r1 = str_i_array(1:512)-COSTAB_FOR(1:512);
+r1 = str_i_array(1:512)-double(i_I(1:512));
 
 %%
 % pi_int = 1608;
@@ -62,42 +63,42 @@ dds_sin = dds_sin.';
 % for i = 2:n
 % 
 %     if (angle_rad_int < 0)
-%         next_phase_correction = next_phase_correction - (angle_in_rad_int_16);
-%         if (next_phase_correction < -pi_int)
-%             next_phase_correction = next_phase_correction + 2*pi_int;
-%         elseif (next_phase_correction > pi_int)
-%             next_phase_correction = next_phase_correction - 2*pi_int;
+%         next_phase_correction = next_phase_correction - (angle_rad_int);
+%         if (next_phase_correction < -SIZE)
+%             next_phase_correction = next_phase_correction + SIZE;
+%         elseif (next_phase_correction > SIZE)
+%             next_phase_correction = next_phase_correction - SIZE;
 %         end
 %     end
 % 
-%     if abs(next_phase_correction) <= pi_int/4
+%     if abs(next_phase_correction) <= SIZE/8
 %         if (next_phase_correction <= 0)
 %             quadrant = 4;
 %         else
 %             quadrant = 0;
 %         end
 %         index = floor(abs(next_phase_correction));
-%     elseif abs(next_phase_correction) <= pi_int/2
+%     elseif abs(next_phase_correction) <= SIZE/2/2
 %         if (next_phase_correction < 0)
 %             quadrant = 5;
 %         else
 %             quadrant = 1;
 %         end
-%         index = floor(pi_int/2 - abs(next_phase_correction));
-%     elseif abs(next_phase_correction) <= pi_int*3/4
+%         index = floor(SIZE/2/2 - abs(next_phase_correction));
+%     elseif abs(next_phase_correction) <= SIZE/2*3/4
 %         if (next_phase_correction < 0)
 %             quadrant = 6;
 %         else
 %             quadrant = 2;
 %         end
-%             index = floor(abs(next_phase_correction) - pi_int/2);
+%             index = floor(abs(next_phase_correction) - SIZE/2/2);
 %     else
 %         if (next_phase_correction < 0)
 %             quadrant = 7;
 %         else
 %             quadrant = 3;
 %         end
-%         index = round(pi_int - abs(next_phase_correction));
+%         index = round(SIZE/2 - abs(next_phase_correction));
 %     end
 % 
 %     phase_correction_matlab(i) = next_phase_correction;

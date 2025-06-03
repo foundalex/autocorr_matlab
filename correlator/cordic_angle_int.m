@@ -25,7 +25,7 @@ function angle_int = cordic_angle_int(i, q, iterations, width)
 % end
 
 scale = 2^width;
-pi_int = round(pi*scale)
+pi_int = round(pi*scale);
 for j = 0:iterations
     atan_table_int(j+1) = int32(ceil(atan(2^-j)*scale)); 
 end
