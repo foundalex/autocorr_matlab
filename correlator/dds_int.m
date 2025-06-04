@@ -1,6 +1,6 @@
 function [dds_cos, dds_sin] = dds_int(angle_rad_int, n)
 % 1/4 period of sine import from verilog
-% lines = readlines("test_signals\rot_lut.txt");
+lines = readlines("test_signals\rot_lut.txt");
 % phase_verilog = importdata("test_signals\phase_correct.txt");
 
 % convert int sine to double
@@ -15,127 +15,142 @@ for i = 1:512
     str_q_array(i) = bin2dec(str_q);
 end
 
-% VAL = pi;
-% SCALE = 2^11;
+% SCALE = 2048;
 % ATAN_LUT_SCALE = 512;
-% % MAX1 = round(pi/4*ATAN_LUT_SCALE);
-% % SIZE = 2^ceil(log2(MAX1));
+% MAX1 = round(pi/4*ATAN_LUT_SCALE);
+% SIZE = 2^ceil(log2(MAX1));
+% for r = 1:SIZE
+%     key1(r) = r/MAX1*pi/4;
+%     i_I1(r) = (cos(key1(r)));
+%     i_Q1(r) = (-sin(key1(r)));
+% end
 
 %% convert int sine to double
-SCALE = 2^12;
-MAX2 = round(2*pi*SCALE/8);
-SIZE = 402*8;
-for k = 1:SIZE
-    key(k) = k/MAX2*2*pi;
-    i_I(k) = int16(round(cos(key(k))*2^11));
-    i_Q(k) = int16(floor(-sin(key(k))*2^11));
-end
+% MAX2 = round(2*pi*4096);
+% for k = 1:32768
+%     key(k) = k/MAX2/8*2*pi;
+%     i_I2(k) = cos(key(k));
+%     i_Q2(k) = sin(key(k));
+% end
 
-next_phase_correction = int32(0);
-dds_cos(1) = i_I(1);
-dds_sin(1) = 0;
-%%
-for i = 2:n
-    if ((angle_rad_int) < 0)
-        next_phase_correction = next_phase_correction - angle_rad_int;
-        if (next_phase_correction < -SIZE)
-            next_phase_correction = next_phase_correction + SIZE;
-        elseif (next_phase_correction > SIZE)
-            next_phase_correction = next_phase_correction - SIZE;
-        end
-    end
-    index = (abs(next_phase_correction));
-    dds_cos(i) = i_I(index);
-    dds_sin(i) = i_Q(index);
-end
+% SCALE = 2048;
+% MAX3 = round(2*pi*SCALE/8);
+% SIZE1 = 402*8;
+% for k = 1:SIZE1
+%     key2(k) = k/MAX3*2*pi;
+%     i_I2(k) = (round(cos(key2(k))*2^11));
+% end
 
-dds_cos = dds_cos.';
-dds_sin = dds_sin.';
+% r1 = str_i_array(1:512)-double(i_I2(1:512));
 
-r1 = str_i_array(1:512)-double(i_I(1:512));
+
+% dds_cos(1) = i_I(1);
+% dds_sin(1) = 0;
 
 %%
-% pi_int = 1608;
-% index = 0;
-% next_phase_correction = 0;
-% sin1(1) = str_i_array(index+1);
-% cos1(1) = str_q_array(index+1);
 % for i = 2:n
-% 
-%     if (angle_rad_int < 0)
-%         next_phase_correction = next_phase_correction - (angle_rad_int);
+%     if ((angle_rad_int) < 0)
+%         next_phase_correction = next_phase_correction - angle_rad_int;
 %         if (next_phase_correction < -SIZE)
 %             next_phase_correction = next_phase_correction + SIZE;
 %         elseif (next_phase_correction > SIZE)
 %             next_phase_correction = next_phase_correction - SIZE;
 %         end
 %     end
-% 
-%     if abs(next_phase_correction) <= SIZE/8
-%         if (next_phase_correction <= 0)
-%             quadrant = 4;
-%         else
-%             quadrant = 0;
-%         end
-%         index = floor(abs(next_phase_correction));
-%     elseif abs(next_phase_correction) <= SIZE/2/2
-%         if (next_phase_correction < 0)
-%             quadrant = 5;
-%         else
-%             quadrant = 1;
-%         end
-%         index = floor(SIZE/2/2 - abs(next_phase_correction));
-%     elseif abs(next_phase_correction) <= SIZE/2*3/4
-%         if (next_phase_correction < 0)
-%             quadrant = 6;
-%         else
-%             quadrant = 2;
-%         end
-%             index = floor(abs(next_phase_correction) - SIZE/2/2);
-%     else
-%         if (next_phase_correction < 0)
-%             quadrant = 7;
-%         else
-%             quadrant = 3;
-%         end
-%         index = round(SIZE/2 - abs(next_phase_correction));
-%     end
-% 
-%     phase_correction_matlab(i) = next_phase_correction;
-%     
-%     sin1(i) = str_i_array((index)+1);
-%     cos1(i) = str_q_array((index)+1);
-% 
-%         if (quadrant == 0)
-%             rot_i(i) = sin1(i);
-%             rot_q(i) = cos1(i);
-%         elseif (quadrant == 1)
-%             rot_i(i) = cos1(i);
-%             rot_q(i) = sin1(i);
-%         elseif (quadrant == 2)
-%             rot_i(i) = -cos1(i);
-%             rot_q(i) = sin1(i);
-%         elseif (quadrant == 3)
-%             rot_i(i) = -sin1(i);
-%             rot_q(i) = cos1(i);
-%         elseif (quadrant == 4)
-%             rot_i(i) = sin1(i);
-%             rot_q(i) = -cos1(i);
-%         elseif (quadrant == 5)
-%             rot_i(i) = cos1(i);
-%             rot_q(i) = -sin1(i);
-%         elseif (quadrant == 6)
-%             rot_i(i) = -cos1(i);
-%             rot_q(i) = -sin1(i);
-%         elseif (quadrant == 7)
-%             rot_i(i) = -sin1(i);
-%             rot_q(i) = -cos1(i);
-%     end
+%     index = (abs(next_phase_correction));
+%     dds_cos(i) = i_I(index);
+%     dds_sin(i) = i_Q(index);
 % end
 % 
-% dds_cos1 = rot_i.';
-% dds_sin1 = rot_q.';
-% 
-% error_phase = phase_verilog - phase_correction_matlab(1:256).';
+% dds_cos = dds_cos.';
+% dds_sin = dds_sin.';
 
+%%
+pi_int = int16(1608);
+pi_int_2 = int16(3216);
+
+pi_int_div_4 = 402;
+pi_int_div_2 = 804;
+pi_int_div_3_4 = 1206;
+
+
+index = 0;
+next_phase_correction = int32(0);
+dds_cos(1) = str_i_array(index+1);
+dds_sin(1) = str_q_array(index+1);
+for i = 2:n
+
+    if (angle_rad_int < 0)
+        next_phase_correction = next_phase_correction + int32(angle_rad_int);
+        if (next_phase_correction < int32(-pi_int))
+            next_phase_correction = next_phase_correction + int32(pi_int_2);
+        elseif (next_phase_correction > int32(pi_int))
+            next_phase_correction = next_phase_correction - int32(pi_int_2);
+        end
+    end
+
+    if abs(next_phase_correction) <= pi_int_div_4 %(pi_int/4)
+        if (next_phase_correction <= 0)
+            quadrant = 4;
+        else
+            quadrant = 0;
+        end
+        index = (abs(next_phase_correction));
+    elseif abs(next_phase_correction) <= pi_int_div_2 %pi_int/2
+        if (next_phase_correction < 0)
+            quadrant = 5;
+        else
+            quadrant = 1;
+        end
+        index = (int32(pi_int_div_2) - abs(next_phase_correction));
+    elseif abs(next_phase_correction) <= pi_int_div_3_4 %pi_int*3/4
+        if (next_phase_correction < 0)
+            quadrant = 6;
+        else
+            quadrant = 2;
+        end
+        index = (abs(next_phase_correction) - int32(pi_int_div_2));
+    else
+        if (next_phase_correction < 0)
+            quadrant = 7;
+        else
+            quadrant = 3;
+        end
+        index = int32(pi_int) - abs(next_phase_correction);
+    end
+    
+    sin1(i) = str_i_array((index)+1);
+    cos1(i) = str_q_array((index)+1);
+
+        if (quadrant == 0)
+            rot_i(i) = sin1(i);
+            rot_q(i) = cos1(i);
+        elseif (quadrant == 1)
+            rot_i(i) = cos1(i);
+            rot_q(i) = sin1(i);
+        elseif (quadrant == 2)
+            rot_i(i) = -cos1(i);
+            rot_q(i) = sin1(i);
+        elseif (quadrant == 3)
+            rot_i(i) = -sin1(i);
+            rot_q(i) = cos1(i);
+        elseif (quadrant == 4)
+            rot_i(i) = sin1(i);
+            rot_q(i) = -cos1(i);
+        elseif (quadrant == 5)
+            rot_i(i) = cos1(i);
+            rot_q(i) = -sin1(i);
+        elseif (quadrant == 6)
+            rot_i(i) = -cos1(i);
+            rot_q(i) = -sin1(i);
+        elseif (quadrant == 7)
+            rot_i(i) = -sin1(i);
+            rot_q(i) = -cos1(i);
+        end
+
+%         quadrant_i(i) = quadrant*100;
+end
+
+dds_cos(2:n) = rot_i(2:n);
+dds_sin(2:n) = rot_q(2:n);
 

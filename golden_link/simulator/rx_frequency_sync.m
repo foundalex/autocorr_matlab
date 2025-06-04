@@ -6,16 +6,6 @@ global sim_consts;
 
 [n_tx_antennas, n_rx_antennas] = get_n_antennas(sim_options);
 
-%% write to file signal
-generation = 0;
-if generation == 1
-    ii = round(real(rxsignal)*2^11).';
-    qq = round(imag(rxsignal)*2^11).';
-    your_variable = [ii qq];
-    dlmwrite('test_signals/rx_signal_22500.txt', your_variable);
-end
-%%
-
 % Estimate the frequency error
 if sim_options.FreqSync
    
@@ -43,36 +33,26 @@ if sim_options.FreqSync
    
    radians_per_sample = 2*pi*freq_est/sim_consts.SampFreq;
 
-    %% write signal for verilog model
-    % rx_signal = rx_frequency_sync(rx_signal, sim_options);
-    % i_rx = real(rx_signal);
-    % q_rx = imag(rx_signal);
-    % rx_signal_w = [floor(i_rx*2^11), floor(q_rx*2^11)];
-    % rx_signal_w = [floor(i_rx*2^11).', floor(q_rx*2^11).'];
-    % dlmwrite('test_signals/rx_signal_w.txt',rx_signal_w);
-   
    %% user defined interval (last 5 symbols)
    phase1 = rxsignal(:,65:145).*conj(rxsignal(:,81:161));
 %    phase1 = rxsignal(:,30:142).*conj(rxsignal(:,46:158));
    phase1 = sum(phase1, 2);
    freq_est_double = -angle(phase1) / (2*D*pi/sim_consts.SampFreq);
    angle_m = angle(phase)*180/pi;
-
    angle_m1 = -angle(phase1);
 
-   %% translate to int last 5 symbols of preamb
-%     rxsignal_preamb = rxsignal(2:161); 
-%     rxsignal_int = int16(round(rxsignal_preamb .* 2^11).');
-%     rxsignal_int_conj_q = -imag(rxsignal_int(80:160));
-%     rxsignal_int_conj_i = real(rxsignal_int(80:160));
-%     rxsignal_int_rt = rxsignal_int(64:144);
+   width = 11;
+   rxsignal_int = int16(round(rxsignal .* 2^width).');
+   %% write to file signal
+   generation = 0;
+   if generation == 1
+    ii = real(rxsignal_int);
+    qq = imag(rxsignal_int);
+    your_variable = [ii qq];
+    writematrix(your_variable, 'test_signals/rx_signal_fo_17000.txt');
+   end
 
-    width = 11;
-    rxsignal_int = int16(round(rxsignal .* 2^width).');
-
-%     figure(6)
-%     error_rx_signal = real(rxsignal).' - real(double(rxsignal_int)*2^-11);
-%     plot(error_rx_signal);
+    qq = correlator_int(rxsignal_int);
 
     rxsignal_int_conj_q = -imag(rxsignal_int(pkt_det_offset+D:pkt_det_offset+rlen));
     rxsignal_int_conj_i = real(rxsignal_int(pkt_det_offset+D:pkt_det_offset+rlen));
@@ -104,8 +84,7 @@ if sim_options.FreqSync
     sum_complex = complex(sum_i_double,sum_q_double);
     error_sum = phase - sum_complex;
     %% cordic angle
-    niters_angle = 25;
-
+    niters_angle = 7;
     ang_cordic = cordicangle(phase,niters_angle);            % matlab function
 %     ang_cordic1 = cordicangle(sum_complex,niters_angle);   % matlab function
 %     ang_cordic2 = cordic_angle(phase,niters_angle);
@@ -116,19 +95,14 @@ if sim_options.FreqSync
 %     error_cordic_angle2 = ang_cordic1 - ang_cordic;
     %% DDS
     n1 = length(rxsignal_int);
-    phase_rad_div = bitshift(phase_rad,-17,'int32'); % divide 16
-    bit_rad = dec2bin(phase_rad_div,16);
-%     if (bit_rad(16))
-%         phase_rad_div = (phase_rad_div);
-%     else
-        phase_rad_div = (phase_rad_div);
-%     end
-%     phase_div = round(er_double_phase*512/16);
+    bit_rad = dec2bin(phase_rad,16);
+    phase_rad_div = bitshift(phase_rad,-4,'int16');
+    bit_rad1 = dec2bin(phase_rad_div,16);
 
     [dds_cos, dds_sin] = dds_int(phase_rad_div, n1+2000);
 
-    dds_cos2 = dds_cos(1:n1);
-    dds_sin2 = dds_sin(1:n1);
+    dds_cos2 = dds_cos(1:n1).';
+    dds_sin2 = dds_sin(1:n1).';
 
     i_correct = int32(real(rxsignal_int)) .* int32(dds_cos2) - int32(imag(rxsignal_int)) .* int32(dds_sin2);
     q_correct = int32(real(rxsignal_int)) .* int32(dds_sin2) + int32(imag(rxsignal_int)) .* int32(dds_cos2);
@@ -140,54 +114,6 @@ if sim_options.FreqSync
     rot_mult_i = rot_mult_cos*2^-11;
     rot_mult_sin = importdata("test_signals\rotate_mult_q.txt");
     rot_mult_q = rot_mult_sin*2^-11;
-
-    figure(8)
-    nn = (1:n1).';
-    a1 = rot_mult_cos(1:n1).';
-    a3 = dds_cos(1:n1);
-    plot(nn, a3, nn, a1);
-    figure(9)
-    nn = (1:2624).';
-    a2 = rot_mult_sin(1:2624).';
-    a4 = dds_sin(1:2624);
-    plot(nn, a2, nn, a4);
-
-
-
-%%
-
-figure(3)
-time_base=0:n1-1;
-correction_signal=exp(-j*(radians_per_sample)*time_base);
-nn = (1:n1).';
-a1 = rot_mult_i(1:n1);
-a2 = real(correction_signal);
-a3 = dds_cos1(1:n1);
-plot(nn, a2, nn, a3, nn, a1);
-
-figure(8)
-error_correction = a2 - a3;
-plot(error_correction);
-title('Разница между генерируемыми косинусами матлаб и verilog')
-xlabel('Номер отсчета') 
-ylabel('Величина ошибки') 
-% legend({'verilog','matlab'},'Location','southwest')
-
-%     spectrumScope = spectrumAnalyzer(SampleRate=20000000, ...            
-%             AveragingMethod='exponential',ForgettingFactor=0.99, ...
-%             YLimits=[-30 10],ShowLegend=true);
-% 
-%     spectrumScope([a3.']);
-
-% subplot(2,1,1)
-% plot(a1)
-% title('Косинус из Verilog. Частота 100кГц')
-% subplot(2,1,2)
-% plot(a2)
-% title('Косинуса из Матлаб. Частота 100кГц')
-% xlabel('Номер отсчета') 
-% ylabel('Амплитуда') 
-% legend({'verilog','matlab'},'Location','southwest')
 
 else
    % Magic number
@@ -202,14 +128,39 @@ time_base=0:siglen-1;
 correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1);
 %% And finally apply correction on the signal
 
+% figure(3)
+% time_base=0:n1-1;
+% correction_signal=exp(-j*(radians_per_sample)*time_base);
+% nn = (1:n1).';
+% a1 = rot_mult_i(1:n1);
+% a2 = real(correction_signal);
+% a3 = dds_cos1(1:n1);
+% plot(nn, a2, nn, a3, nn, a1);
+% 
+% figure(8)
+% error_correction = a2 - a3;
+% plot(error_correction);
+% title('Разница между генерируемыми косинусами матлаб и verilog')
+% xlabel('Номер отсчета') 
+% ylabel('Величина ошибки') 
+% % legend({'verilog','matlab'},'Location','southwest')
+
+%     spectrumScope = spectrumAnalyzer(SampleRate=sim_consts.SampFreq, ...            
+%             AveragingMethod='exponential',ForgettingFactor=0.99, ...
+%             YLimits=[-30 10],ShowLegend=true);
+% 
+%     spectrumScope([dds_cos2]);
+
  out_signal = rxsignal.*correction_signal;
+
+ %% Ошибка между моей моделью и матлаб
  i_correct_double = double(i_correct) * 2^((-width*2));
  q_correct_double = double(q_correct) * 2^((-width*2));
 
- out_signal1 = complex(i_correct_double, q_correct_double).';
+ out_signal1 = complex(i_correct_double, q_correct_double);
 
- error_out_signal_real = abs(real(out_signal1)) - abs(real(out_signal));
- error_out_signal_imag = abs(imag(out_signal1)) - abs(imag(out_signal));
+ error_out_signal_real = abs(real(out_signal1)) - abs(real(out_signal).');
+ error_out_signal_imag = abs(imag(out_signal1)) - abs(imag(out_signal).');
  figure(4)
  subplot(2,1,1)
  plot(error_out_signal_real)
@@ -217,7 +168,9 @@ correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1)
  subplot(2,1,2)
  plot(error_out_signal_imag)
  title('Ошибка между Q-составляющими сигнала после смесителя (алгоритм matlab double и мой int)')
- %% Ошибка между верилог моделью
+ %% Ошибка между верилог моделью и своей моделью
+ % необходимо на этом месте остановить моделирование, чтобы сигнал не менялся из-за шума
+ % *************************************
  rotate_out_i = importdata("test_signals\rotate_out_i.txt");
  rotate_out_i1 = rotate_out_i*2^-22;
  rotate_out_q = importdata("test_signals\rotate_out_q.txt");
@@ -226,14 +179,14 @@ correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1)
  count = 1;
  count1 = 1000;
  for kk = 1:length(rxsignal_int)
-    aa = int32(dds_cos(kk));
-    bb = int32(dds_sin(kk));
-    cc = int32(real(rxsignal_int(count+189)));
-    dd = int32(imag(rxsignal_int(count+189)));
-    i_correct_verilog(kk) = cc .* aa - dd .* bb;
-    i_correct_verilog(kk) = round(i_correct_verilog(kk)/2);
-    q_correct_verilog(kk) = cc .* bb + dd .* aa;
-    q_correct_verilog(kk) = round(q_correct_verilog(kk)/2); 
+    aa(kk) = int32(dds_cos(kk));
+    bb(kk) = int32(dds_sin(kk));
+    cc(kk) = int32(real(rxsignal_int(count+189)));
+    dd(kk) = int32(imag(rxsignal_int(count+189)));
+    i_correct_verilog(kk) = cc(kk) .* aa(kk) - dd(kk) .* bb(kk);
+    i_correct_verilog(kk) = bitshift(i_correct_verilog(kk),-1,'int32');
+    q_correct_verilog(kk) = cc(kk) .* bb(kk) + dd(kk) .* aa(kk);
+    q_correct_verilog(kk) = bitshift(q_correct_verilog(kk),-1,'int32');
     count = count + 1;
     if (count == 129 || count == (count1+64))
         count = count + 16;
@@ -245,25 +198,25 @@ correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1)
     end
  end
 
- i_correct_verilog_double = double(i_correct_verilog).' * 2^(-width*2);
- q_correct_verilog_double = double(q_correct_verilog).' * 2^(-width*2);
- error_verilog_out_i = abs(rotate_out_i1(1:2200)) - abs(i_correct_verilog_double(1:2200));
- error_verilog_out_q = abs(rotate_out_q1(1:2200)) - abs(q_correct_verilog_double(1:2200));
+%  i_correct_verilog_double = double(i_correct_verilog).' * 2^(-width*2);
+%  q_correct_verilog_double = double(q_correct_verilog).' * 2^(-width*2);
+%  error_verilog_out_i = abs(rotate_out_i1(1:2200)) - abs(i_correct_verilog_double(1:2200));
+%  error_verilog_out_q = abs(rotate_out_q1(1:2200)) - abs(q_correct_verilog_double(1:2200));
 
-%  i_correct_verilog = i_correct_verilog.';
-%  q_correct_verilog = q_correct_verilog.'; 
-%  error_verilog_out_i = abs(rotate_out_i(1:2200)) - abs(double(i_correct_verilog(1:2200)));
-%  error_verilog_out_q = abs(rotate_out_q(1:2200)) - abs(double(q_correct_verilog(1:2200)));
+ i_correct_verilog = i_correct_verilog.';
+ q_correct_verilog = q_correct_verilog.'; 
+ error_verilog_out_i = abs(rotate_out_i(1:2200)) ./ abs(double(i_correct_verilog(1:2200)));
+ error_verilog_out_q = abs(rotate_out_q(1:2200)) ./ abs(double(q_correct_verilog(1:2200)));
 
  figure(5)
  subplot(2,1,1)
  plot(error_verilog_out_i)
- title('Разница между отсчетами I-составляющей')
+ title('Отношение между отсчетами I-составляющей')
  xlabel('Номер отсчета') 
  ylabel('Величина ошибки') 
  subplot(2,1,2)
  plot(error_verilog_out_q)
- title('Разница между отсчетами Q-составляющей')
+ title('Отношение между отсчетами Q-составляющей')
  xlabel('Номер отсчета') 
  ylabel('Величина ошибки') 
 %  legend({'verilog','matlab'},'Location','northeast')

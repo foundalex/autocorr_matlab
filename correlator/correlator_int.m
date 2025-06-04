@@ -1,13 +1,10 @@
-
-clear; clc
-
+function model_pream = correlator_int(rx_signal)
 %% LOAD DATA
-
 % wlan waveform generator
-load('test_signals\var.mat');
-rxWaveform = [var.waveform];
-
-rx_w = importdata('test_signals\samples.csv');
+% load('test_signals\var.mat');
+% rxWaveform = [var.waveform];
+% 
+% rx_w = importdata('test_signals\samples.csv');
 % rx_w_24_mbps = importdata('test_signals\samples_24_mbps_A.csv');
 
 % rx_w1(:,1) = rx_w_24_mbps(1:2:end,1);
@@ -16,89 +13,80 @@ rx_w = importdata('test_signals\samples.csv');
 % writematrix(rx_w1, 'test_signals\verilog\samples_blade_rf.txt');
 
 % середина пакета
-rx_blade = complex(rx_w(1:2:20000,1), rx_w(1:2:20000,2));
+% rx_blade = complex(rx_w(1:2:20000,1), rx_w(1:2:20000,2));
+% rx_blade = rx_signal;
 
 %% wlanPacketDetect
-offset = 0;
-threshold = 1;
-
-[startOffset,M] = wlanPacketDetect(rx_blade, var.config.waveform.ChannelBandwidth, offset, threshold);
-totalOffset = offset + startOffset;
-plot(M)
-% title(M,'')
-xlabel('Отсчеты');
-ylabel('Значение корреляции');
-%% Генерация тестовых входных файлов для моделирования verilog
-generation = 0;
-
-switch generation
-    case 1
-
-    % нормируем сигнал
-    rxWaveform_norm = rxWaveform ./ max(rxWaveform);
-    
-    waveform_i = floor((real(rxWaveform_norm))*2^11);
-    waveform_q = floor((imag(rxWaveform_norm))*2^11);
-
-    writematrix(waveform_i, 'test_signals\verilog\waveform_int_i.txt');
-    writematrix(waveform_q, 'test_signals\verilog\waveform_int_q.txt');
-
-    otherwise
-end
-%% Числитель
-% Fifo
-rxWaveform_norm_complex = rx_blade;
+% offset = 0;
+% threshold = 1;
 % 
-int_i = int16(real(rx_blade));
-int_q = int16(imag(rx_blade));
+% [startOffset,M] = wlanPacketDetect(rx_blade, var.config.waveform.ChannelBandwidth, offset, threshold);
+% totalOffset = offset + startOffset;
+% plot(M)
+% % title(M,'')
+% xlabel('Отсчеты');
+% ylabel('Значение корреляции');
+
+%% Числитель
+
+% Fifo
+int_i = real(rx_signal);
+int_q = imag(rx_signal);
 
 delay_sample_fifo_out_i = [zeros(17,1); int_i(2:end-16)];
 delay_sample_fifo_out_q = [zeros(17,1); int_q(2:end-16)];
 
-delay_sample_fifo_out = [zeros(17,1); rxWaveform_norm_complex(2:end-16)];
+delay_sample_fifo_out = [zeros(17,1); rx_signal(2:end-16)];
+
 % Комплексный умножитель
-% a = conj(delay_sample_fifo_out);
-% b = -delay_sample_fifo_out_q;
-delay_prod_inst = rxWaveform_norm_complex .* conj(delay_sample_fifo_out);
+rxsignal_int_conj_q = -imag(delay_sample_fifo_out);
+rxsignal_int_conj_i = real(delay_sample_fifo_out);
 
-% % % conj
-delay_prod_inst_int_real = int32(int_i) .* int32(delay_sample_fifo_out_i) - int32(int_q).* int32(-delay_sample_fifo_out_q);
-% delay_prod_inst_int_imag = int32(int_i).* int32(delay_sample_fifo_out_q) + int32(int_i).*int32(-delay_sample_fifo_out_q);
-
-% out_word = xor(int2bit(abs(delay_prod_inst_int_real)-(sign(delay_prod_inst_int_real) < 0),32), repmat(sign(delay_prod_inst_int_real) < 0,32,1)); 
-
-% delay_prod_inst_int_real_bit = dec2bin(delay_prod_inst_int_real,32);
-
-% 
-% delay_prod_inst_int_real_bit_shift = bitshift(delay_prod_inst_int_real_bit,1);
-% delay_prod_inst_int_real_bit_int = bin2dec(delay_prod_inst_int_real_bit_shift,32);
+% Комплексное умножение на комплексно-сопряженное число
+delay_prod_inst_i = (int32(real(rx_signal)) .* int32(rxsignal_int_conj_i) - int32(imag(rx_signal)) .* int32(rxsignal_int_conj_q));
+delay_prod_inst_q = (int32(rxsignal_int_conj_i) .* int32(imag(rx_signal)) + int32(real(rx_signal)) .* int32(rxsignal_int_conj_q));
 
 % Отбрасываем один бит с округлением
-delay_prod_inst = floor(delay_prod_inst ./ 2);
+delay_prod_inst_i = bitshift(delay_prod_inst_i,-1,'int32');
+delay_prod_inst_q = bitshift(delay_prod_inst_q,-1,'int32');
 
-% delay_prod_inst_int_real1 = (delay_prod_inst_int_real);
-% 
-% err = delay_prod_inst - delay_prod_inst_int_real;
+% Сверяем результаты
+delay_prod_inst_i_v = importdata('test_signals\sync_short\delay_prod_i.txt');
+delay_prod_inst_q_v = importdata('test_signals\sync_short\delay_prod_q.txt');
+error_delay_prod_inst_i = delay_prod_inst_i(18:length(delay_prod_inst_i_v)+17) - int32(delay_prod_inst_i_v);
+error_delay_prod_inst_q = delay_prod_inst_q(18:length(delay_prod_inst_q_v)+17) - int32(delay_prod_inst_q_v);
+
 %% Окно с суммой I и Q
-delay_prod = delay_prod_inst;
+delay_prod_i = delay_prod_inst_i;
+delay_prod_q = delay_prod_inst_q;
 
-for i = 2 : size(delay_prod_inst)
+for i = 2 : size(delay_prod_inst_i)
     if (i < 34)
-        delay_prod_inst(i) = delay_prod_inst(i) + delay_prod_inst(i-1);
+        delay_prod_inst_i(i) = delay_prod_inst_i(i) + delay_prod_inst_i(i-1);
+        delay_prod_inst_q(i) = delay_prod_inst_q(i) + delay_prod_inst_q(i-1);
     else
-        delay_prod_inst(i) = delay_prod_inst(i-1) + delay_prod(i) - delay_prod(i-16);
+        delay_prod_inst_i(i) = delay_prod_inst_i(i-1) + delay_prod_i(i) - delay_prod_i(i-16);
+        delay_prod_inst_q(i) = delay_prod_inst_q(i-1) + delay_prod_q(i) - delay_prod_q(i-16);
     end
 end
 
-delay_prod_inst = floor(delay_prod_inst./16);
+% делим на 16
+delay_prod_inst_i = bitshift(delay_prod_inst_i,-4,'int32');
+delay_prod_inst_q = bitshift(delay_prod_inst_q,-4,'int32');
+
+% Сверяем результаты
+prod_avg_i_v = importdata('test_signals\sync_short\prod_avg_i.txt');
+prod_avg_q_v = importdata('test_signals\sync_short\prod_avg_q.txt');
+error_prod_avg_i = delay_prod_inst_i(18:length(prod_avg_i_v)+17) - int32(prod_avg_i_v);
+error_prod_avg_q = delay_prod_inst_q(18:length(prod_avg_q_v)+17) - int32(prod_avg_q_v);
 
 %% 
 % abs
-i_delay = abs(real(delay_prod_inst));
-q_delay = abs(imag(delay_prod_inst));
+i_delay = abs(delay_prod_inst_i);
+q_delay = abs(delay_prod_inst_q);
 
 % find max
-for i = 1:size(delay_prod_inst)
+for i = 1:length(delay_prod_inst_i)
     if (i_delay(i) > q_delay(i))
         max_d(i) = i_delay(i);
     else
@@ -107,7 +95,7 @@ for i = 1:size(delay_prod_inst)
 end
 
 % find min
-for i = 1:size(delay_prod_inst)
+for i = 1:length(delay_prod_inst_i)
     if (i_delay(i) > q_delay(i))
         min_d(i) = q_delay(i);
     else
@@ -119,48 +107,74 @@ end
 alpha = 1;
 beta = 1/4;
 
-mag = alpha*max_d + floor(beta*min_d);
+mag = max_d + bitshift(min_d,-2,'int32');
 mag = mag.';
 
+% Сверяем результаты
+prod_avg_mag_v = importdata('test_signals\sync_short\prod_avg_mag.txt');
+error_prod_avg_mag = mag(18:length(prod_avg_mag_v)+17) - int32(prod_avg_mag_v);
 
 %% Знаменатель
-% Комплексный умножитель
-complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
-% Отбрасываем один бит с округлением
-complex_mult = floor(complex_mult ./ 2);
+% % Комплексный умножитель
+% complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
+% % Отбрасываем один бит с округлением
+% complex_mult = floor(complex_mult ./ 2);
 
-%% Проверка
-% Сверяем с verilog комплексный умножитель знаменателя
-complex_mult_denominator = importdata('test_signals\verilog\complex_mult_mag_dout.txt');
+% complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
 
-size_ref = size(complex_mult_denominator);
-ref = complex_mult(1:size_ref(1));
+rx_signal_int_conj_i = real(rx_signal);
+rx_signal_int_conj_q = -imag(rx_signal);
 
-error_ver_mult = ref - complex_mult_denominator;
-subplot(6,1,4);
-plot(error_ver_mult)
-title('Ошибка после комплексного умножителя в знаменателе')
+complex_mult_i = (int32(real(rx_signal)) .* int32(rx_signal_int_conj_i) - ...
+    int32(imag(rx_signal)) .* int32(rx_signal_int_conj_q));
+complex_mult_q = (int32(rx_signal_int_conj_i) .* int32(imag(rx_signal)) + ...
+    int32(real(rx_signal)) .* int32(rx_signal_int_conj_q));
+
+complex_mult_i = bitshift(complex_mult_i,-1,'int32');
+complex_mult_q = bitshift(complex_mult_q,-1,'int32');
+
 %% Окно с суммой I
 % avg_channel
-complex_mult_avg = complex_mult;
+% complex_mult_avg = complex_mult;
 
-for i = 2 : size(complex_mult)
+% for i = 2 : size(complex_mult)
+%     if (i < 17)
+%         complex_mult(i) = complex_mult(i) + complex_mult(i-1);
+%     else
+%         complex_mult(i) = complex_mult(i-1) + complex_mult_avg(i) - complex_mult_avg(i-16);
+%     end
+% end
+
+% complex_mult = floor(complex_mult./16);
+
+complex_mult_avg_i = complex_mult_i;
+complex_mult_avg_q = complex_mult_q;
+
+for i = 2 : length(complex_mult_i)
     if (i < 17)
-        complex_mult(i) = complex_mult(i) + complex_mult(i-1);
+%         complex_mult(i) = complex_mult(i) + complex_mult(i-1);
+        complex_mult_i(i) = complex_mult_i(i) + complex_mult_i(i-1);
+        complex_mult_q(i) = complex_mult_q(i) + complex_mult_q(i-1);
     else
-        complex_mult(i) = complex_mult(i-1) + complex_mult_avg(i) - complex_mult_avg(i-16);
+%         complex_mult(i) = complex_mult(i-1) + complex_mult_avg(i) - complex_mult_avg(i-16);
+        complex_mult_i(i) = complex_mult_i(i-1) + complex_mult_avg_i(i) - complex_mult_avg_i(i-16);
+        complex_mult_q(i) = complex_mult_q(i-1) + complex_mult_avg_q(i) - complex_mult_avg_q(i-16);
     end
 end
 
-complex_mult = floor(complex_mult./16);
-
+complex_mult_i = bitshift(complex_mult_i,-4,'int32');
+complex_mult_q = bitshift(complex_mult_q,-4,'int32');
 
 %% 
 threshold_scale = 1;
 if (threshold_scale == 1)
-    complex_mult = floor(complex_mult ./4) + floor(complex_mult ./8);
+%     complex_mult = floor(complex_mult ./4) + floor(complex_mult ./8);
+    complex_mult_i = bitshift(complex_mult_i,-2,'int32') + bitshift(complex_mult_i,-3,'int32');
+    complex_mult_q = bitshift(complex_mult_q,-2,'int32') + bitshift(complex_mult_q,-3,'int32');
 else
-    complex_mult = floor(complex_mult ./2) + floor(complex_mult ./4);
+    complex_mult_i = bitshift(complex_mult_i,-1,'int32') + bitshift(complex_mult_i,-2,'int32');
+    complex_mult_q = bitshift(complex_mult_q,-1,'int32') + bitshift(complex_mult_q,-2,'int32');
+%     complex_mult = floor(complex_mult ./2) + floor(complex_mult ./4);
 end
 
 %%
@@ -168,10 +182,10 @@ pos_count = 0;
 neg_count = 0;
 count = 0;
 
-complex_mult = complex_mult(18:end);
+% complex_mult = complex_mult(18:end);
 mag = mag(18:end);
 
-for i = 1:size(complex_mult)-(19+18)
+for i = 1:length(complex_mult)-(19+18)
     if (mag(i) > complex_mult(i))
         if (real(rx_blade(i+19)) < 0)
             neg_count = neg_count + 1;

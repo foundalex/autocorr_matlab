@@ -31,9 +31,9 @@ extra_noise = sqrt(noise_var) * (randn(n_rx_antennas,sim_consts.ExtraNoiseSample
 end_noise = sqrt(noise_var) * (randn(n_rx_antennas,170) + j*randn(n_rx_antennas, 170));
 
 % add noise
-rx_signal = rx_signal+noise;
-
-% extra noise samples are inserted before the packet to test the packet search algorithm
+% rx_signal = rx_signal+noise;
+% 
+% % extra noise samples are inserted before the packet to test the packet search algorithm
 rx_signal = [extra_noise rx_signal end_noise];
 
 %Create frequency offset
