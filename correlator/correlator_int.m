@@ -28,7 +28,6 @@ function model_pream = correlator_int(rx_signal)
 % ylabel('Значение корреляции');
 
 %% Числитель
-
 % Fifo
 int_i = real(rx_signal);
 int_q = imag(rx_signal);
@@ -115,13 +114,6 @@ prod_avg_mag_v = importdata('test_signals\sync_short\prod_avg_mag.txt');
 error_prod_avg_mag = mag(18:length(prod_avg_mag_v)+17) - int32(prod_avg_mag_v);
 
 %% Знаменатель
-% % Комплексный умножитель
-% complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
-% % Отбрасываем один бит с округлением
-% complex_mult = floor(complex_mult ./ 2);
-
-% complex_mult = rxWaveform_norm_complex .* conj(rxWaveform_norm_complex);
-
 rx_signal_int_conj_i = real(rx_signal);
 rx_signal_int_conj_q = -imag(rx_signal);
 
@@ -133,48 +125,25 @@ complex_mult_q = (int32(rx_signal_int_conj_i) .* int32(imag(rx_signal)) + ...
 complex_mult_i = bitshift(complex_mult_i,-1,'int32');
 complex_mult_q = bitshift(complex_mult_q,-1,'int32');
 
-%% Окно с суммой I
+%% Окно с суммой
 % avg_channel
-% complex_mult_avg = complex_mult;
-
-% for i = 2 : size(complex_mult)
-%     if (i < 17)
-%         complex_mult(i) = complex_mult(i) + complex_mult(i-1);
-%     else
-%         complex_mult(i) = complex_mult(i-1) + complex_mult_avg(i) - complex_mult_avg(i-16);
-%     end
-% end
-
-% complex_mult = floor(complex_mult./16);
-
 complex_mult_avg_i = complex_mult_i;
-complex_mult_avg_q = complex_mult_q;
 
 for i = 2 : length(complex_mult_i)
     if (i < 17)
-%         complex_mult(i) = complex_mult(i) + complex_mult(i-1);
         complex_mult_i(i) = complex_mult_i(i) + complex_mult_i(i-1);
-        complex_mult_q(i) = complex_mult_q(i) + complex_mult_q(i-1);
     else
-%         complex_mult(i) = complex_mult(i-1) + complex_mult_avg(i) - complex_mult_avg(i-16);
         complex_mult_i(i) = complex_mult_i(i-1) + complex_mult_avg_i(i) - complex_mult_avg_i(i-16);
-        complex_mult_q(i) = complex_mult_q(i-1) + complex_mult_avg_q(i) - complex_mult_avg_q(i-16);
     end
 end
 
 complex_mult_i = bitshift(complex_mult_i,-4,'int32');
-complex_mult_q = bitshift(complex_mult_q,-4,'int32');
-
 %% 
 threshold_scale = 1;
 if (threshold_scale == 1)
-%     complex_mult = floor(complex_mult ./4) + floor(complex_mult ./8);
     complex_mult_i = bitshift(complex_mult_i,-2,'int32') + bitshift(complex_mult_i,-3,'int32');
-    complex_mult_q = bitshift(complex_mult_q,-2,'int32') + bitshift(complex_mult_q,-3,'int32');
 else
     complex_mult_i = bitshift(complex_mult_i,-1,'int32') + bitshift(complex_mult_i,-2,'int32');
-    complex_mult_q = bitshift(complex_mult_q,-1,'int32') + bitshift(complex_mult_q,-2,'int32');
-%     complex_mult = floor(complex_mult ./2) + floor(complex_mult ./4);
 end
 
 %%
@@ -182,12 +151,11 @@ pos_count = 0;
 neg_count = 0;
 count = 0;
 
-% complex_mult = complex_mult(18:end);
 mag = mag(18:end);
 
-for i = 1:length(complex_mult)-(19+18)
-    if (mag(i) > complex_mult(i))
-        if (real(rx_blade(i+19)) < 0)
+for i = 1:length(complex_mult_i)-(19+18)
+    if (mag(i) > complex_mult_i(i))
+        if (int_i(i+19) < 0)
             neg_count = neg_count + 1;
         else
             pos_count = pos_count + 1;
@@ -210,19 +178,18 @@ for i = 1:length(complex_mult)-(19+18)
         count = 0;
     end
 end
-
 %% 
-preamble  = importdata('test_signals\verilog\preamble.txt');
-err_pream = model_pream(1:length(preamble)).' - preamble;
-subplot(4,1,1);
-plot(real(rx_blade(19:length(preamble))))
-title('I-составляющая сигнала')
-subplot(4,1,2)
-plot(preamble)
-title('График корреляции verilog')
-subplot(4,1,3)
-plot(model_pream(1:length(preamble)))
-title('График корреляции matlab')
-subplot(4,1,4)
-plot(err_pream)
-title('Ошибка корреляции matlab и verilog')
+% preamble  = importdata('test_signals\verilog\preamble.txt');
+% err_pream = model_pream(1:length(preamble)).' - preamble;
+% subplot(4,1,1);
+% plot(real(rx_blade(19:length(preamble))))
+% title('I-составляющая сигнала')
+% subplot(4,1,2)
+% plot(preamble)
+% title('График корреляции verilog')
+% subplot(4,1,3)
+% plot(model_pream(1:length(preamble)))
+% title('График корреляции matlab')
+% subplot(4,1,4)
+% plot(err_pream)
+% title('Ошибка корреляции matlab и verilog')

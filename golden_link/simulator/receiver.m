@@ -22,8 +22,8 @@ end
 %     dlmwrite('test_signals/rx_signal_22500.txt', your_variable);
 % end
 %% packet search
-rx_signal = rx_find_packet_edge(rx_signal, sim_options);
-
+% rx_signal = rx_find_packet_edge(rx_signal, sim_options);
+rx_signal = rx_find_packet_edge(rx_signal);
 % Frequency error estimation and correction
 rx_signal = rx_frequency_sync(rx_signal, sim_options);
 

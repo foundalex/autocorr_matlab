@@ -4,7 +4,7 @@
 % https://openofdm.readthedocs.io/en/latest/verilog.html
 
 %%
-function angle_int = cordic_angle_int(i, q, iterations, width)
+function angle_int = cordic_angle_int(i, q, iterations)
    
 % i = int32(-81.2793*2^11);
 % q = int32(-4.089*2^11);
@@ -27,12 +27,17 @@ function angle_int = cordic_angle_int(i, q, iterations, width)
 SIZE = 2^8;
 SCALE = 2*SIZE;
 pi_int = round(pi*SCALE);
-pi_int_div_2 = int16(804);
+pi_int_div_2 = int16(round(pi_int/2));
 
 
 for j = 0:iterations
     atan_table_int(j+1) = int16(ceil(atan(2^-j)*SCALE)); 
 end
+
+% for j = 0:iterations
+%     key(j+1) = j/SIZE;
+%     atan_table_int(j+1) = int16(round(atan(key(j+1))*SCALE)); 
+% end
 
 %% https://dspguru.com/dsp/faqs/cordic/   3.2.2
   i_tmp = i;

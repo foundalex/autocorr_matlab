@@ -14,49 +14,34 @@ for i = 1:512
     str_i_array(i) = bin2dec(str_i);
     str_q_array(i) = bin2dec(str_q);
 end
-
+%%
 % SCALE = 2048;
-% ATAN_LUT_SCALE = 512;
-% MAX1 = round(pi/4*ATAN_LUT_SCALE);
-% SIZE = 2^ceil(log2(MAX1));
-% for r = 1:SIZE
-%     key1(r) = r/MAX1*pi/4;
-%     i_I1(r) = (cos(key1(r)));
-%     i_Q1(r) = (-sin(key1(r)));
-% end
-
-%% convert int sine to double
-% MAX2 = round(2*pi*4096);
-% for k = 1:32768
-%     key(k) = k/MAX2/8*2*pi;
-%     i_I2(k) = cos(key(k));
-%     i_Q2(k) = sin(key(k));
-% end
-
-% SCALE = 2048;
-% MAX3 = round(2*pi*SCALE/8);
-% SIZE1 = 402*8;
+% MAX3 = round(pi/4*SCALE);
+% SIZE1 = 2^round(log2(MAX3));
 % for k = 1:SIZE1
-%     key2(k) = k/MAX3*2*pi;
-%     i_I2(k) = (round(cos(key2(k))*2^11));
+%     key2(k) = k/MAX3*pi/4;
+%     i_I(k) = (round(cos(key2(k))*2^11));
+%     i_Q(k) = (round(-sin(key2(k))*2^11));
 % end
+% 
+% pi_int = (round(pi*2^11));
+% pi_int_2 = (2*(round(pi*2^11)));
+% 
+% pi_int_div_4 = (round((pi*2^11)/4));
+% pi_int_div_2 = (round((pi*2^11)/2));
+% pi_int_div_3_4 = (round((pi*2^11)*3/4));
 
 % r1 = str_i_array(1:512)-double(i_I2(1:512));
 
-
-% dds_cos(1) = i_I(1);
-% dds_sin(1) = 0;
-
 %%
+% next_phase_correction = 0;
 % for i = 2:n
-%     if ((angle_rad_int) < 0)
-%         next_phase_correction = next_phase_correction - angle_rad_int;
-%         if (next_phase_correction < -SIZE)
-%             next_phase_correction = next_phase_correction + SIZE;
-%         elseif (next_phase_correction > SIZE)
-%             next_phase_correction = next_phase_correction - SIZE;
+%         next_phase_correction = next_phase_correction + angle_rad_int;
+%         if (next_phase_correction < -SIZE1)
+%             next_phase_correction = next_phase_correction + SIZE1;
+%         elseif (next_phase_correction > SIZE1)
+%             next_phase_correction = next_phase_correction - SIZE1;
 %         end
-%     end
 %     index = (abs(next_phase_correction));
 %     dds_cos(i) = i_I(index);
 %     dds_sin(i) = i_Q(index);
@@ -65,14 +50,13 @@ end
 % dds_cos = dds_cos.';
 % dds_sin = dds_sin.';
 
-%%
+%% verilog model
 pi_int = int16(1608);
 pi_int_2 = int16(3216);
 
 pi_int_div_4 = 402;
 pi_int_div_2 = 804;
 pi_int_div_3_4 = 1206;
-
 
 index = 0;
 next_phase_correction = int32(0);

@@ -45,20 +45,33 @@ if sim_options.FreqSync
    rxsignal_int = int16(round(rxsignal .* 2^width).');
    %% write to file signal
    generation = 0;
+
    if generation == 1
     ii = real(rxsignal_int);
     qq = imag(rxsignal_int);
     your_variable = [ii qq];
     writematrix(your_variable, 'test_signals/rx_signal_fo_17000.txt');
+
+    rx_w = importdata('test_signals\samples.csv');
+    rx_w1(:,1) = rx_w(1:2:length(rx_w)/10,1);
+    rx_w1(:,1) = rx_w(1:2:length(rx_w)/10,2);
+    writematrix(rx_w1, 'test_signals\verilog\samples_blade_rf.txt');
    end
 
-    qq = correlator_int(rxsignal_int);
+    % Поиск короткой преамбулы
+    short_preamble_detect = correlator_int(rxsignal_int);
 
+    index_short_preamble = find(short_preamble_detect);
+    rxsignal_int = rxsignal_int(index_short_preamble-101:end);
+
+    % 1. Комплексно-сопряженный сигнал, задержанный на D=16 семплов
     rxsignal_int_conj_q = -imag(rxsignal_int(pkt_det_offset+D:pkt_det_offset+rlen));
     rxsignal_int_conj_i = real(rxsignal_int(pkt_det_offset+D:pkt_det_offset+rlen));
 
     rxsignal_int_rt = rxsignal_int(pkt_det_offset:pkt_det_offset+rlen-D);
 
+    % 2. Умножение задержанного комплексно-сопряженного сигнала на сигнал
+    % (фазовый детектор)
     phase_detect_i = (int32(real(rxsignal_int_rt)) .* int32(rxsignal_int_conj_i) - int32(imag(rxsignal_int_rt)) .* int32(rxsignal_int_conj_q));
     phase_detect_q = (int32(rxsignal_int_conj_i) .* int32(imag(rxsignal_int_rt)) + int32(real(rxsignal_int_rt)) .* int32(rxsignal_int_conj_q));
 
@@ -72,6 +85,7 @@ if sim_options.FreqSync
     error_ph_i = real(phase2) - phase_detect_i_double;
     error_ph_q = imag(phase2) - phase_detect_q_double;
     %% sum phase
+    % 3. Суммирование всех получившихся отсчетов (аккумулятор)
     sum_i = 0;
     sum_q = 0;
     for i = 1:length(rxsignal_int_rt)
@@ -84,26 +98,30 @@ if sim_options.FreqSync
     sum_complex = complex(sum_i_double,sum_q_double);
     error_sum = phase - sum_complex;
     %% cordic angle
+    % 4. Поиск угла получившегося значения
     niters_angle = 7;
     ang_cordic = cordicangle(phase,niters_angle);            % matlab function
 %     ang_cordic1 = cordicangle(sum_complex,niters_angle);   % matlab function
 %     ang_cordic2 = cordic_angle(phase,niters_angle);
-    phase_rad = cordic_angle_int(sum_i, sum_q, niters_angle, width*2);
+    phase_rad = cordic_angle_int(sum_i, sum_q, niters_angle);
     er_double_phase = double(phase_rad) * 2^(-width*2); 
 %     error_cordic_angle = abs(ang_cordic) - abs(er_double_phase);
 %     error_cordic_angle1 = ang_cordic - ang_cordic/16;
 %     error_cordic_angle2 = ang_cordic1 - ang_cordic;
     %% DDS
+    % 5. Нахождение среднего арифметического (деление на 16)
     n1 = length(rxsignal_int);
     bit_rad = dec2bin(phase_rad,16);
-    phase_rad_div = bitshift(phase_rad,-4,'int16');
+    phase_rad_div = bitshift(phase_rad,-4,'int16'); % деление на 16
     bit_rad1 = dec2bin(phase_rad_div,16);
 
+    % 6. Подача на вход ДДС средне-арифметического значения (приращение фазы(шаг счетчика аккумулятора фазы))
     [dds_cos, dds_sin] = dds_int(phase_rad_div, n1+2000);
 
     dds_cos2 = dds_cos(1:n1).';
     dds_sin2 = dds_sin(1:n1).';
-
+    % 7. Смещение частоты входного сигнала путем умножения на выходной
+    % сигнал ДДС
     i_correct = int32(real(rxsignal_int)) .* int32(dds_cos2) - int32(imag(rxsignal_int)) .* int32(dds_sin2);
     q_correct = int32(real(rxsignal_int)) .* int32(dds_sin2) + int32(imag(rxsignal_int)) .* int32(dds_cos2);
 
@@ -220,3 +238,9 @@ correction_signal=repmat(exp(-j*(radians_per_sample)*time_base),n_rx_antennas,1)
  xlabel('Номер отсчета') 
  ylabel('Величина ошибки') 
 %  legend({'verilog','matlab'},'Location','northeast')
+
+    spectrumScope = spectrumAnalyzer(SampleRate=sim_consts.SampFreq, ...            
+            AveragingMethod='exponential',ForgettingFactor=0.99, ...
+            YLimits=[-30 10],ShowLegend=true);
+    ar = complex(dds_cos2,dds_sin2)
+    spectrumScope([ar]);
